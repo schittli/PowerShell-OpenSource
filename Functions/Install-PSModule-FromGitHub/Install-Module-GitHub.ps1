@@ -11,26 +11,6 @@
 #
 #
 #
-## Testfälle
-#
-#  ✅ Modul ist nicht installiert
-#     ✅ Installation in: AllUsers Scope
-#     ✅ Installation in: CurrentUser Scope
-#
-#  🟩 Modul ist installiert in: AllUsers Scope
-#     ✅ Force Neuinstallation in: AllUsers Scope
-#     ✅ Force Neuinstallation mit: -UpgradeInstalledModule
-#     📌 Parallele Installation in: CurrentUser Scope
-#     🟩 Parallele Installation in: CurrentUser Scope und -UpgradeInstalledModule
-#
-#  🟩 Modul ist installiert in: CurrentUser Scope
-#     🟩 Force Neuinstallation in: CurrentUser Scope
-#     🟩 Force Neuinstallation mit: -UpgradeInstalledModule
-#     🟩 Parallele Installation in: AllUsers Scope
-#     🟩 Parallele Installation in: AllUsers Scope und -UpgradeInstalledModule
-#
-# 🟩 -EnforceScope
-#
 # ✅
 # 🟩
 
@@ -782,12 +762,197 @@ Filter Assert-eModuleScope {
 }
 
 
-
-
-
-
-# Prüft, ob das GitHub heruntergeladenes Modul installiert / aktualisiert werden muss
+# Prüft, ob für das von GitHub heruntergeladenes Modul
+# in 1 PS Module Scope installiert werden kann / muss
 Function Check-Install-GitHubModule() {
+   [CmdletBinding()]
+   Param(
+      [Parameter(Mandatory)]
+      # Das zu installierende Modul von GitHub
+      [PSCustomObject]$oGitHubModule,
+      [Parameter(Mandatory)]
+      [PSModuleInfo]$oInstalledModule,
+      # Wenn das Modul noch nicht schon installiert ist, wird dieser Scope benützt
+      [Object]$eDefaultScope,
+      # Auch wenn das Modul schon in einem anderen Scope installiert ist, wird es trotzdem in diesem Scope installiert
+      [Object]$eEnforceScope,
+      # Aktualisiert das Modul, wenn es bereits installiert ist
+      [Switch]$UpgradeInstalledModule,
+      # Das oberste Verzeichnis:
+      # '^(\\|\.\\)*\.git'
+      [String[]]$BlackListDirsRgx,
+      # Erzwingt die Installation immer
+      [Switch]$Force
+   )
+
+   # Das Modul ist in einem Scope installiert
+   Write-Host (' {0}' -f $oInstalledModule.ModuleBase) -NoNewline
+
+   # Das Scope-Dir bestimmen
+   $InstalledModuleScopeDir = Get-Module-ScopeDir -oModule $oInstalledModule
+   $InstalledeModuleScopeType = Get-ModuleScope-Type -ScopeDir $InstalledModuleScopeDir
+
+   # Ist das Modul im gewünschten Scope?
+   $IsInRightScope = $True
+   If ($null -eq $eDefaultScope -and $null -eq $eEnforceScope) {
+      $IsInRightScope = $True
+   } ElseIf ($eEnforceScope -and ($InstalledeModuleScopeType -ne $eEnforceScope)) {
+      $IsInRightScope = $False
+   }
+
+   # Ist das installierte Modul veraltet?
+   $UpgradeExistingModule = $False
+   Switch ( (Compare-Version ([Version]$oGitHubModule.PSDData.ModuleVersion) $oInstalledModule.Version) ) {
+            ([eVersionCompare]::Equal) {
+         Write-Host ('  Bereits aktuell')
+         # Wenn installierte Module zwingend installiert werden sollen
+         # 221114 200528
+         # If ($UpgradeInstalledModule -or ($IsInRightScope -and $Force)) {
+         #    If ($Force) { Write-Host ('  > Forciere Neuinstallation') }
+         #    Else { Write-Host ('  > Aktualisiere Modul') }
+         #    $UpgradeExistingModule = $True
+         # }
+         If ($IsInRightScope) {
+            If ($Force) {
+               Write-Host ('  > Forciere Neuinstallation')
+               $UpgradeExistingModule = $True
+            }
+         } Else {
+            # Wenn das Modul nicht im richtigen Scope ist,
+            # die schon richtige Version nur bei -Force aktualisieren
+            If ($UpgradeInstalledModule -and $Force) {
+               Write-Host ('  > Forciere Neuinstallation')
+               $UpgradeExistingModule = $True
+            }
+         }
+      }
+
+      ([eVersionCompare]::LeftIsNewer) {
+         Write-Host ('  Veraltet')
+         Write-Host ('   Version installiert: {0} - Version GitHub: {1}' -f [String]$oInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
+         If ($UpgradeInstalledModule -or ($IsInRightScope -and $Force)) {
+            If ($Force) { Write-Host ('  > Forciere Neuinstallation') }
+            Else { Write-Host ('  > Aktualisiere Modul') }
+            $UpgradeExistingModule = $True
+         }
+         Else {
+            Write-Host '-UpgradeInstalledModule wurde nicht angegeben' -ForegroundColor Red
+            Write-Host 'Modul wird nicht aktualisiert' -ForegroundColor Red
+         }
+      }
+
+      ([eVersionCompare]::RightIsNewer) {
+         Write-Host '  Lokale Version ist neuer!'
+         Write-Host ('   Version installiert: {0} - Version GitHub: {1}' -f [String]$oInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
+         Write-Host 'Lokale Kopie wird nicht aktualisiert!' -ForegroundColor Red
+      }
+   }
+   # Das installierte Modul aktualisieren
+   If ($UpgradeExistingModule) {
+      # Das Modul aktualisieren
+      Upgrade-Module -oGitHubModule $oGitHubModule -oInstalledModule $oInstalledModule `
+         -BlackListDirsRgx $BlackListDirsRgx `
+         -Force:$True
+   }
+
+   # Das Modul im richtigen Scope installieren
+   If ($IsInRightScope -eq $False) {
+      If ($eEnforceScope) { $eZielScope = $eEnforceScope }
+      Else { $eZielScope = $eDefaultScope }
+      Upgrade-Module -oGitHubModule $oGitHubModule `
+         -eInstallScope $eZielScope `
+         -BlackListDirsRgx $BlackListDirsRgx `
+         -Force:$Force
+   }
+}
+
+
+
+# Prüft, ob für das von GitHub heruntergeladenes Modul
+# in 1 oder mehreren PS Module Scopes installiert werden kann / muss
+Function Check-Install-GitHubModules() {
+   [CmdletBinding()]
+   Param(
+      [Parameter(Mandatory)]
+      # Das zu installierende Modul von GitHub
+      [PSCustomObject]$oGitHubModule,
+      [Parameter(Mandatory)]
+      # Die Liste der installierten Module
+      [Array]$oModulesList,
+      # Wenn das Modul noch nicht schon installiert ist, wird dieser Scope benützt
+      [Object]$eDefaultScope,
+      # Auch wenn das Modul schon in einem anderen Scope installiert ist, wird es trotzdem in diesem Scope installiert
+      [Object]$eEnforceScope,
+      # Aktualisiert das Modul, wenn es bereits installiert ist
+      [Switch]$UpgradeInstalledModule,
+      # Das oberste Verzeichnis:
+      # '^(\\|\.\\)*\.git'
+      [String[]]$BlackListDirsRgx,
+      # Erzwingt die Installation immer
+      [Switch]$Force
+   )
+
+
+   Write-Host 'Installiere GitHub Modul'
+   Write-Host (' Modulname: {0}' -f $oGitHubModule.ModuleName)
+   Write-Host (' Version  : {0}' -f $oGitHubModule.PSDData.ModuleVersion)
+   Write-Host (' Quell-Dir: {0}' -f $oGitHubModule.ModuleRootDir)
+
+   ## Prepare
+   $eDefaultScope | Assert-eModuleScope
+   $eEnforceScope | Assert-eModuleScope
+
+   # Ist das Modul bereits installiert?
+   $InstalledModules = @($oModulesList | ? Name -eq $oGitHubModule.ModuleName)
+
+   Switch ($InstalledModules.Count) {
+      0 {
+         # Debugged: OK
+         # Noch nicht installiert - das Modul kopieren
+         # Nur, wenn ein Zielscope angegeben wurde
+         If ($eEnforceScope) { $eZielScope = $eEnforceScope }
+         Else { $eZielScope = $eDefaultScope }
+         If ($eZielScope) {
+            Upgrade-Module -oGitHubModule $oGitHubModule `
+                           -eInstallScope $eZielScope `
+                           -BlackListDirsRgx $BlackListDirsRgx `
+                           -Force:$Force
+         }
+      }
+
+      1 {
+         # Das Modul ist in einem Scope installiert
+         $ThisInstalledModule = $InstalledModules[0]
+         Write-Host (' {0}' -f $ThisInstalledModule.ModuleBase) -NoNewline
+
+         Check-Install-GitHubModule -oGitHubModule $oGitHubModule -oInstalledModule $ThisInstalledModule `
+                                    -eDefaultScope $eDefaultScope -eEnforceScope $eEnforceScope `
+                                    -UpgradeInstalledModule:$UpgradeInstalledModule `
+                                    -BlackListDirsRgx $BlackListDirsRgx -Force:$Force
+      }
+
+      Default {
+         # Das Modul ist in mehreren Scopes installiert
+         Write-Host ' Das Modul ist in mehreren Scopes installiert'
+         ForEach ($InstalledModule in $InstalledModules) {
+            # $ThisModuleScopeDir = ($InstalledModule.ModuleBase -split '\\' | select -SkipLast 2) -join '\'
+            Write-Host (' {0}' -f $InstalledModule.ModuleBase) -NoNewline
+
+            Check-Install-GitHubModule -oGitHubModule $oGitHubModule -oInstalledModule $InstalledModule `
+               -eDefaultScope $eDefaultScope -eEnforceScope $eEnforceScope `
+               -UpgradeInstalledModule:$UpgradeInstalledModule `
+               -BlackListDirsRgx $BlackListDirsRgx -Force:$Force
+         }
+      }
+   }
+
+}
+
+
+
+# Prüft, ob für das von GitHub heruntergeladenes Modul
+# in 1 oder mehreren PS Module Scopes installiert werden kann / muss
+Function Check-Install-GitHubModules_001() {
    [CmdletBinding()]
    Param(
       [Parameter(Mandatory)]
@@ -1061,7 +1226,7 @@ Try {
 
       If ($InstallAllModules -or $oModuleToInstall) {
          Write-Verbose ("Prüfe Modul: ")
-         Check-Install-GitHubModule -oGitHubModule $FoundGitHubModule -oModulesList $UsersModules `
+         Check-Install-GitHubModules -oGitHubModule $FoundGitHubModule -oModulesList $UsersModules `
             -eDefaultScope $eDefaultScope -eEnforceScope $eEnforceScope `
             -UpgradeInstalledModule:$UpgradeInstalledModule `
             -BlackListDirsRgx $BlackListDirsRgx `

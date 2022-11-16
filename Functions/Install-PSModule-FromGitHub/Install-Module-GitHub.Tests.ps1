@@ -1,74 +1,18 @@
-﻿#
-#
-#  # Aktualisiert ein allenfalls bereits installierte Module.
-#  # Wenn es noch nicht existiert, wird es im ProposedDefaultScope installiert
-#  -UpgradeInstalledModule -ProposedDefaultScope AllUsers|CurrentUser
-#
-#  # Aktualisiert ein allenfalls bereits installierte Module.
-#  # Wenn es noch nicht im Scope EnforceScope installiert ist, wird es zwingend auch darin installiert
-#  -UpgradeInstalledModule -EnforceScope AllUsers|CurrentUser
+﻿# Tests für Install-Module-GitHub.ps1
 #
 #
 #
-## Testfälle
-#
-#  ✅ Modul ist nicht installiert
-#     ✅ Installation in: AllUsers Scope
-#     ✅ Installation in: CurrentUser Scope
-#
-#  🟩 Modul ist installiert in: AllUsers Scope
-#     ✅ Force Neuinstallation in: AllUsers Scope
-#     ✅ Force Neuinstallation mit: -UpgradeInstalledModule
-#     📌 Parallele Installation in: CurrentUser Scope
-#     🟩 Parallele Installation in: CurrentUser Scope und -UpgradeInstalledModule
-#
-#  🟩 Modul ist installiert in: CurrentUser Scope
-#     🟩 Force Neuinstallation in: CurrentUser Scope
-#     🟩 Force Neuinstallation mit: -UpgradeInstalledModule
-#     🟩 Parallele Installation in: AllUsers Scope
-#     🟩 Parallele Installation in: AllUsers Scope und -UpgradeInstalledModule
-#
-# 🟩 -EnforceScope
-#
+# 001, 221114, Tom@jig.ch
+
 # ✅
 # 🟩
 
 
-# Ex GitHub Zip
-# c:\Scripts\PowerShell\Install-Module-GitHub\!Q GitHubRepository\GitHubRepository-master.zip
+$Script:Block0Failed = $False
 
-
-# !M Install-Module
-# https://learn.microsoft.com/de-ch/powershell/module/PowershellGet/Install-Module?view=powershell-5.1
-
-   # [Parameter(Mandatory, ParameterSetName = 'ProposeDefaultScope')]
-   # # Wenn das Modul noch nicht installiert ist, dann wird dieser Scope genützt
-   # [ValidateSet(IgnoreCase, 'AllUsers', 'CurrentUser')]
-   # [Alias('DefaultScope')]
-   # [AllowEmptyString()][String]$ProposedDefaultScope,
-
-   # [Parameter(Mandatory, ParameterSetName = 'EnforceScope')]
-   # # Das Modul wird zwingend in diesem Scope installiert, auch wenn es schon anderso installiert ist
-   # [ValidateSet(IgnoreCase, 'AllUsers', 'CurrentUser')]
-   # [AllowEmptyString()][String]$EnforceScope,
-
-   # [Parameter(Mandatory, ParameterSetName = 'UpgradeInstalledModule')]
-   # # Wenn das Modul schon installiert ist, wird es in diesem Scope aktualisiert
-   # [Switch]$UpgradeInstalledModule,
-
-   # # Installiere alle Module vom heruntergeladenen GitHub Repo
-   # [Switch]$InstallAllModules,
-
-   # # Liste der Modulnamen, die installiert werden sollen
-   # [String[]]$InstallModuleNames,
-
-   # # Ein bestehendes Modul wird zwingend aktualisiert
-   # [Switch]$Force
-
-Describe 'Test-Wrapper' {
+Describe 'Test Install-Module-GitHub.ps1' {
 
    BeforeAll {
-
       ## Config
       $InstallModuleGitHub_ps1 = 'Install-Module-GitHub.ps1'
       $Script:DummyModuleName = 'Dummy-PS-Module'
@@ -133,8 +77,8 @@ Describe 'Test-Wrapper' {
             # E.g. '1.2.0'
             [Parameter(Mandatory)][String]$VersionInfo
          )
-         $Psd1File = 'Dummy-PS-Module.psd1'
-         $Psd1TplFile = 'Dummy-PS-Module-Template.psd1'
+         $Psd1File = "$($ModuleName).psd1"
+         $Psd1TplFile = "$($ModuleName)-Template.psd1"
          $Psd1TplFile = Join-Path $Script:DummyModuleRootDir $Psd1TplFile
          $Psd1File = Join-Path $Script:DummyModuleSrcDir $Psd1File
          # File lesen
@@ -187,11 +131,11 @@ Describe 'Test-Wrapper' {
          }
 
          If ($DeleteAllUsers) {
-            $ModuleDir = Join-Path $Script:ModuleScopesDir[([eModuleScope]::AllUsers)] $ModuleSubDir
+            $ModuleDir = Join-Path $ModuleScopesDirAllUsers $ModuleSubDir
             Remove-Item -Recurse -Force -EA SilentlyContinue -LiteralPath $ModuleDir
          }
          If ($DeleteCurrentUser) {
-            $ModuleDir = Join-Path $Script:ModuleScopesDir[([eModuleScope]::CurrentUser)] $ModuleSubDir
+            $ModuleDir = Join-Path $ModuleScopesDirCurrentUser $ModuleSubDir
             Remove-Item -Recurse -Force -EA SilentlyContinue -LiteralPath $ModuleDir
          }
       }
@@ -247,6 +191,12 @@ Describe 'Test-Wrapper' {
          [eModuleScope]::CurrentUser = (& $InstallModuleGitHub_ps1 -GetScopeCurrentUser)
       }
 
+      ## Pester bug:
+      # Nested Pester Blocks können die HastTable Werte per Enum nicht auslesen
+      $ModuleScopesDirAllUsers = $ModuleScopesDir[([eModuleScope]::AllUsers)]
+      $ModuleScopesDirCurrentUser = $ModuleScopesDir[([eModuleScope]::CurrentUser)]
+
+
       ## Für jede DummyModul-Version das Zip-File erzeugen
       [Enum]::Getvalues([eModulVersion]) | % {
          $ThisModuleCfg = $Script:ModuleVersions[$_]
@@ -258,11 +208,31 @@ Describe 'Test-Wrapper' {
 
 
    Describe 'Test #0: Config' {
+      BeforeAll {
+         # SkipRemainingOnFailure
+         # Block - Skip all remaining tests in current block (including child blocks and tests) after a failed test.
+         # Container - Skip all remainng tests in the container (file or scriptblock) after a failed test.
+         # Run - Skip all tests across all containers in a run after a failed test.
+         # None - Default, keep original behaviour.
+         # $Configuration.Run.SkipRemainingOnFailure = 'Block'
+         # $Configuration.SkipRemainingOnFailure = 'Block'
+         # $PesterPreference.Run.SkipRemainingOnFailure = 'Block'
+         # $PesterPreference = [PesterConfiguration]::Default
+         # $PesterPreference.Run.SkipRemainingOnFailure = 'Run'
+      }
+
+      It 'Assert $ScriptDir' {
+         # Sicherstellen, dass die Pfade definiert sind
+         $ScriptDir | Should -Not -BeNullOrEmpty
+         $InstallModuleGitHub_ps1 | Should -Not -BeNullOrEmpty
+      }
+
       It 'Assert $Scope…Dir' {
          # Sicherstellen, dass die Pfade definiert sind
-         $Script:ModuleScopesDir[([eModuleScope]::AllUsers)] | Should -Not -BeNullOrEmpty
-         $Script:ModuleScopesDir[([eModuleScope]::CurrentUser)] | Should -Not -BeNullOrEmpty
+         $ModuleScopesDirAllUsers | Should -Not -BeNullOrEmpty
+         $ModuleScopesDirCurrentUser | Should -Not -BeNullOrEmpty
       }
+
    }
 
 
@@ -289,7 +259,14 @@ Describe 'Test-Wrapper' {
                                  -InstallAllModules
 
          # Wurde das Modul installiert?
-         Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($ZielScope)] $ModuleVersions[($InstallVersion)].ModuleSubDir) | Should -Be $True
+         ## Pester Bug
+         # Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($ZielScope)] $ModuleVersions[($InstallVersion)].ModuleSubDir) | Should -Be $True
+         If ($ZielScope -eq [eModuleScope]::AllUsers) {
+            $ModuleRootDir = $ModuleScopesDirAllUsers
+         } Else {
+            $ModuleRootDir = $ModuleScopesDirCurrentUser
+         }
+         Test-Path -LiteralPath (Join-Path $ModuleRootDir $ModuleVersions[($InstallVersion)].ModuleSubDir) | Should -Be $True
       }
 
 
@@ -353,7 +330,6 @@ Describe 'Test-Wrapper' {
 
       It '#21b Same Scope & Version, Using -UpgradeInstalledModule' {
          $InstallVersion = $Set20InitInstallVersion
-         $ZielScope = $Set20InitZielScope
 
          # Timestamp der aktuellen Modul-Installation
          $OriInstallTimestamp = Get-Item -LiteralPath (Join-Path $ModuleScopesDir[($Set20InitZielScope)] $ModuleVersions[($Set20InitInstallVersion)].ModuleSubDir) | select -ExpandProperty LastWriteTime
@@ -637,7 +613,7 @@ Describe 'Test-Wrapper' {
       }
 
 
-      It '#31a All Scopes, new Version, ohne -UpgradeInstalledModule und ohne -force' {
+      It '#31a -ProposedDefaultScope (nicht enforced), new Version, ohne -UpgradeInstalledModule und ohne -force' {
          $InstallVersion = [eModulVersion]::V200
          $ZielScope = [eModuleScope]::CurrentUser
 
@@ -655,7 +631,7 @@ Describe 'Test-Wrapper' {
       }
 
 
-      It '#31b All Scopes, new Version, mit -force' {
+      It '#31b -ProposedDefaultScope (nicht enforced), new Version, mit -force, ohne -UpgradeInstalledModule' {
          $InstallVersion = [eModulVersion]::V200
          $ZielScope = [eModuleScope]::CurrentUser
          $NotZielScope = [eModuleScope]::AllUsers
@@ -673,13 +649,73 @@ Describe 'Test-Wrapper' {
             -ProposedDefaultScope $ZielScope `
             -Force
 
-         # Die ursprüngliche Version existiert immer noch
-         Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($NotZielScope)] $ModuleVersions[($Set30InitInstallVersion)].ModuleSubDir) | Should -Be $True
+         ## Beide Versionen wurden aktualisiert,
+         # weil der proposed (nicht enforced) Scope für beide bereits installieren Scopes
+         # $IsInRightScope = $true gesetzt wird
 
-         # Neu existiert das aktualisierte Modul
+         Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($NotZielScope)] $ModuleVersions[($InstallVersion)].ModuleSubDir) | Should -Be $True
          Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($ZielScope)] $ModuleVersions[($InstallVersion)].ModuleSubDir) | Should -Be $True
 
-         # Die Vor-Version des aktualsierten Moduls existiert nicht mehr
+         # Die alte Version des aktualsierten Moduls existiert nicht mehr
+         Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($NotZielScope)] $ModuleVersions[($Set30InitInstallVersion)].ModuleSubDir) | Should -Be $False
+         Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($ZielScope)] $ModuleVersions[($Set30InitInstallVersion)].ModuleSubDir) | Should -Be $False
+      }
+
+
+      It '#31c -EnforceScope, new Version, mit -force, ohne -UpgradeInstalledModule' {
+         $InstallVersion = [eModulVersion]::V200
+         $ZielScope = [eModuleScope]::CurrentUser
+         $NotZielScope = [eModuleScope]::AllUsers
+
+         # Version der aktuellen Modul-Installation
+         # $OriInstallVersionDir1Name = Get-Item -LiteralPath (Join-Path $ModuleScopesDir[($Set30ZielScope1)] $ModuleVersions[($Set30InitInstallVersion)].ModuleSubDir) | select -ExpandProperty Name
+         # $OriInstallVersionDir2Name = Get-Item -LiteralPath (Join-Path $ModuleScopesDir[($Set30ZielScope2)] $ModuleVersions[($Set30InitInstallVersion)].ModuleSubDir) | select -ExpandProperty Name
+
+         # Das Modulist in beiden Scopes installiert
+         Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($Set30ZielScope1)] $ModuleVersions[($Set30InitInstallVersion)].ModuleSubDir) | Should -Be $True
+         Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($Set30ZielScope2)] $ModuleVersions[($Set30InitInstallVersion)].ModuleSubDir) | Should -Be $True
+
+         $Null = & $InstallModuleGitHub_ps1 -InstallZip $ModuleVersions[($InstallVersion)].ZipFile `
+            -InstallAllModules `
+            -EnforceScope $ZielScope `
+            -Force
+
+         # Die Version, die nicht im -EnforceScope ist, wurde nicht aktualisiert
+         Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($NotZielScope)] $ModuleVersions[($Set30InitInstallVersion)].ModuleSubDir) | Should -Be $True
+
+         # Die Version im -EnforceScope wurde aktualisiert
+         Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($ZielScope)] $ModuleVersions[($InstallVersion)].ModuleSubDir) | Should -Be $True
+
+         # Die alte Version im -EnforceScope wurde gelöscht
+         Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($ZielScope)] $ModuleVersions[($Set30InitInstallVersion)].ModuleSubDir) | Should -Be $False
+      }
+
+
+      It '#31d -EnforceScope, new Version, mit -force und -UpgradeInstalledModule' {
+         $InstallVersion = [eModulVersion]::V200
+         $ZielScope = [eModuleScope]::CurrentUser
+         $NotZielScope = [eModuleScope]::AllUsers
+
+         # Version der aktuellen Modul-Installation
+         # $OriInstallVersionDir1Name = Get-Item -LiteralPath (Join-Path $ModuleScopesDir[($Set30ZielScope1)] $ModuleVersions[($Set30InitInstallVersion)].ModuleSubDir) | select -ExpandProperty Name
+         # $OriInstallVersionDir2Name = Get-Item -LiteralPath (Join-Path $ModuleScopesDir[($Set30ZielScope2)] $ModuleVersions[($Set30InitInstallVersion)].ModuleSubDir) | select -ExpandProperty Name
+
+         # Das Modulist in beiden Scopes installiert
+         Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($Set30ZielScope1)] $ModuleVersions[($Set30InitInstallVersion)].ModuleSubDir) | Should -Be $True
+         Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($Set30ZielScope2)] $ModuleVersions[($Set30InitInstallVersion)].ModuleSubDir) | Should -Be $True
+
+         $Null = & $InstallModuleGitHub_ps1 -InstallZip $ModuleVersions[($InstallVersion)].ZipFile `
+            -InstallAllModules `
+            -EnforceScope $ZielScope `
+            -UpgradeInstalledModule `
+            -Force
+
+         ## Beide Versionen wurden aktualisiert,
+         Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($NotZielScope)] $ModuleVersions[($InstallVersion)].ModuleSubDir) | Should -Be $True
+         Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($ZielScope)] $ModuleVersions[($InstallVersion)].ModuleSubDir) | Should -Be $True
+
+         # Die alte Version des aktualsierten Moduls existiert nicht mehr
+         Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($NotZielScope)] $ModuleVersions[($Set30InitInstallVersion)].ModuleSubDir) | Should -Be $False
          Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($ZielScope)] $ModuleVersions[($Set30InitInstallVersion)].ModuleSubDir) | Should -Be $False
       }
 
