@@ -312,138 +312,195 @@ If ($GetScopeCurrentUser) { Return $CurrentUserModulesDir }
 
 
 
+# 200806
+Function Has-Value($Data) {
+   If ($null -eq $Data) { Return $False }
+   Switch ($Data.GetType().Name) {
+      'String' {
+         If ([String]::IsNullOrEmpty($Data)) { Return $False }
+         Else { Return $True }
+      }
+      Default {
+         Return $True
+      }
+   }
+}
+
+Function Is-Empty($Data) {
+   Return !(Has-Value $Data)
+}
+
+Function Is-Verbose() {
+   $VerbosePreference -eq 'Continue'
+}
+
+Function Is-WhatIf() {
+   $WhatIfPreference
+}
+
+
 #Region Toms Tools: Log
 
 # Log
 # Prüft, ob $Script:LogColors definiert ist und nützt dann dieses zur Farbgebung
 # $Script:LogColors =@('Cyan', 'Yellow')
 #
-# !Ex
-# 	Log 1 'Test1' -NoNewline; Log 1 'Test2' -Append
-# 	Log 1 'Test1' -NoNewline; Log -Message 'Test2' -Append
-#
-#
 # 0: Thema - 1: Kapitel - 2: OK - 3: Error
 # 200604 175016
 # 200805 103305
-# 	Neu: Optional BackgroundColor
+#  Neu: Optional BackgroundColor
 # 211129 110213
-# 	Fix -ClrToEol zusammen mit -ReplaceLine
-# 220102 172537
-# 	Fix Für PS7: Kommt irgendwie nicht mit NoNewLine zurecht
-# 220118 095129
-# 	ValueFromPipeline richtig angewendet
-$Script:LogColors = @('Green', 'Yellow', 'Cyan', 'White', 'Red')
+#  Fix -ClrToEol zusammen mit -ReplaceLine
+# 220926 152200
+#  Neu: [Switch]IfVerbose
+#	Wir dur ausgegeben, wenn Verbose aktiv ist
+#  Fix bei NewLineBefore
+# 221116 191858
+#  Wenn Get-Host keine echte Console hat (und z.B. BackgroundColor $null ist)
+#  dann arbeiten wir mit default Werten
+$Script:LogColors = @('Green', 'Yellow', 'Cyan', 'Red')
 Function Log() {
+   [CmdletBinding(SupportsShouldProcess)]
    Param (
-      [Parameter(Position = 0)][Int]$Indent,
-      [Parameter(Position = 1, ValueFromPipeline, ValueFromPipelineByPropertyName)][String]$Message = '',
-      [Parameter(Position = 2)][ConsoleColor]$ForegroundColor,
+      [Parameter(Position = 0)]
+      [Int]$Indent,
+
+      [Parameter(Position = 1)]
+      [String]$Message = '',
+
+      [Parameter(Position = 2)]
+      [ConsoleColor]$ForegroundColor,
+
       # Vor der Nachricht eine Leerzeile
-      [Parameter(Position = 3)][Switch]$NewLineBefore,
+      [Parameter(Position = 3)]
+      [Switch]$NewLineBefore,
+
       # True: Die aktuelle Zeile wird gelöscht und neu geschrieben
-      [Parameter(Position = 4)][Switch]$ReplaceLine = $false,
-      # True: Am Ende keinen Zeilenumbruch
-      [Parameter(Position = 5)][Switch]$NoNewline = $false,
+      [Parameter(Position = 4)]
+      [Switch]$ReplaceLine = $false,
+
+      # True: Am eine keinen Zeilenumbruch
+      [Parameter(Position = 5)]
+      [Switch]$NoNewline = $false,
+
       # Append, also kein Präfix mit Ident
-      [Parameter(Position = 6)][Switch]$Append = $false,
+      [Parameter(Position = 6)]
+      [Switch]$Append = $false,
+
       # Löscht die Zeile bis zum Zeilenende
-      [Parameter(Position = 7)][Switch]$ClrToEol = $false,
-      [Parameter(Position = 8)][ConsoleColor]$BackgroundColor
+      [Parameter(Position = 7)]
+      [Switch]$ClrToEol = $false,
+
+      # Ausgabe erfolgt nur, wenn Verbose aktiv ist
+      [Switch]$IfVerbose,
+
+      [Parameter(Position = 8)]
+      [ConsoleColor]$BackgroundColor
    )
 
-   Begin {
-      If ($Script:LogDisabled -eq $true) { Return }
-      # Fix für PS7
-      If ($null -eq $Script:IsPS7) { $Script:IsPS7 = ($PSVersionTable).PSVersion.Major -eq 7 }
-      If ($null -eq $Script:DefaultBackgroundColor) { $Script:DefaultBackgroundColor = (Get-Host).UI.RawUI.BackgroundColor }
-      If ([String]::IsNullOrEmpty($Message)) { $Message = '' }
+   # Irgend ein fix / workaround
+   $PSBoundParametersCopy = $PSBoundParameters
 
-      If ($Indent -eq $null) { $Indent = 0 }
-      If ($BackgroundColor -eq $null) { $BackgroundColor = $Script:DefaultBackgroundColor }
+   If ($Script:LogDisabled -eq $true) { Return }
 
-      If ($ReplaceLine) { $Message = "`r$Message" }
+   # Wenn Verbose gewünscht aber nicht aktiv, dann sind wir fertig
+   If ($IfVerbose -and (Is-Verbose) -eq $False) {
+      Return
+   }
 
-      If ($NewLineBefore) { Write-Host '' }
-
-      $WriteHostArgs = @{ }
-      If ($ForegroundColor -eq $null) {
-         If ($null -ne $Script:LogColors -and $Indent -le $Script:LogColors.Count -and $null -ne $Script:LogColors[$Indent]) {
-            Try {
-               $ForegroundColor = $Script:LogColors[$Indent]
-            }
-            Catch {
-               Write-Host "Ungültige Farbe: $($Script:LogColors[$Indent])" -ForegroundColor Red
-            }
-         }
-         If ($null -eq $ForegroundColor) {
-            $ForegroundColor = [ConsoleColor]::White
-         }
+   ## Init der Get-Host Config Daten
+   # $Script:LogDefaultBackgroundColor
+   If ($null -eq $Script:LogDefaultBackgroundColor) {
+      If ($null -eq (Get-Host).UI.RawUI.BackgroundColor) {
+         $Script:LogDefaultBackgroundColor = [ConsoleColor]::Black
+      } Else {
+         $Script:LogDefaultBackgroundColor = (Get-Host).UI.RawUI.BackgroundColor
       }
-      If ($ForegroundColor) {
-         $WriteHostArgs += @{ ForegroundColor = $ForegroundColor }
-      }
-      $WriteHostArgs += @{ BackgroundColor = $BackgroundColor }
-
-      If ($NoNewline) {
-         $WriteHostArgs += @{ NoNewline = $true }
+   }
+   # $Script:LogMaxWindowSizeWidth
+   If ($null -eq $Script:LogMaxWindowSizeWidth) {
+      If ($null -eq (Get-Host).UI.RawUI.MaxWindowSize) {
+         $Script:LogMaxWindowSizeWidth = 132
+      } Else {
+         $Script:LogMaxWindowSizeWidth = (Get-Host).UI.RawUI.BackgroundColor
       }
    }
 
-   Process {
-      If ($Append) {
-         $Msg = $Message
-         If ($ClrToEol) {
-            $Width = (get-host).UI.RawUI.MaxWindowSize.Width
-            If ($Msg.Length -lt $Width) {
-               $Spaces = $Width - $Msg.Length
-               $Msg = "$Msg$(' ' * $Spaces)"
-            }
+   If ($NewLineBefore) { Write-Host '' }
+   If ([String]::IsNullOrEmpty($Message)) { $Message = '' }
+
+   If ($Indent -eq $null) { $Indent = 0 }
+   If ($null -eq $BackgroundColor) { $BackgroundColor = $Script:LogDefaultBackgroundColor }
+
+   If ($ReplaceLine) { $Message = "`r$Message" }
+
+   $WriteHostArgs = @{ }
+   If ($null -eq $ForegroundColor) {
+      If ($null -ne $Script:LogColors -and $Indent -le $Script:LogColors.Count -and $Script:LogColors[$Indent] -ne $null) {
+         Try {
+            $ForegroundColor = $Script:LogColors[$Indent]
+         }
+         Catch {
+            Write-Host "Ungültige Farbe: $($Script:LogColors[$Indent])" -ForegroundColor Red
          }
       }
-      Else {
-         Switch ($Indent) {
-            0 {
-               $Msg = "* $Message"
-               If ($NoNewline -and $ClrToEol) {
-                  $Width = (get-host).UI.RawUI.MaxWindowSize.Width
-                  If ($Msg.Length -lt $Width) {
-                     $Spaces = $Width - $Msg.Length
-                     $Msg = "$Msg$(' ' * $Spaces)"
-                  }
-               }
-               If (!($ReplaceLine)) {
-                  $Msg = "`n$Msg"
-               }
-            }
-            Default {
-               $Msg = $(' ' * ($Indent * 2) + $Message)
-               If ($NoNewline -and $ClrToEol) {
-                  # Rest der Zeile mit Leerzeichen überschreiben
-                  $Width = (get-host).UI.RawUI.MaxWindowSize.Width
-                  If ($Msg.Length -lt $Width) {
-                     $Spaces = $Width - $Msg.Length
-                     $Msg = "$Msg$(' ' * $Spaces)"
-                  }
-               }
-            }
-         }
+      If ($null -eq $ForegroundColor) {
+         $ForegroundColor = [ConsoleColor]::White
       }
+   }
+   If ($ForegroundColor) {
+      $WriteHostArgs += @{ ForegroundColor = $ForegroundColor }
+   }
+   $WriteHostArgs += @{ BackgroundColor = $BackgroundColor }
 
-      Write-Host $Msg @WriteHostArgs
-      # Fix für PS7: Den Cursor ans Ende Positionieren
-      If ($Script:IsPS7 -and $NoNewline) {
-         $CursorPosition = (Get-Host).UI.RawUI.CursorPosition
-         $CursorPosition.X = $Msg.Length
-			(Get-Host).UI.RawUI.CursorPosition = $CursorPosition
-      }
-
-      # if (!([String]::IsNullOrEmpty($LogFile))) {
-      # 	"$([DateTime]::Now.ToShortDateString()) $([DateTime]::Now.ToLongTimeString())   $Message" | Out-File $LogFile -Append
-      # }
+   If ($NoNewline) {
+      $WriteHostArgs += @{ NoNewline = $true }
    }
 
+   If ($Append) {
+      $Msg = $Message
+      If ($ClrToEol) {
+         $Width = $Script:LogMaxWindowSizeWidth
+         If ($Msg.Length -lt $Width) {
+            $Spaces = $Width - $Msg.Length
+            $Msg = "$Msg$(' ' * $Spaces)"
+         }
+      }
+   }
+   Else {
+      Switch ($Indent) {
+         0 {
+            $Msg = "* $Message"
+            If ($NoNewline -and $ClrToEol) {
+               $Width = $Script:LogMaxWindowSizeWidth
+               If ($Msg.Length -lt $Width) {
+                  $Spaces = $Width - $Msg.Length
+                  $Msg = "$Msg$(' ' * $Spaces)"
+               }
+            }
+            If (!($ReplaceLine)) {
+               $Msg = "`n$Msg"
+            }
+         }
+         Default {
+            $Msg = $(' ' * ($Indent * 2) + $Message)
+            If ($NoNewline -and $ClrToEol) {
+               # Rest der Zeile mit Leerzeichen überschreiben
+               $Width = $Script:LogMaxWindowSizeWidth
+               If ($Msg.Length -lt $Width) {
+                  $Spaces = $Width - $Msg.Length
+                  $Msg = "$Msg$(' ' * $Spaces)"
+               }
+            }
+         }
+      }
+   }
 
+   Write-Host $Msg @WriteHostArgs
+
+   # if (!([String]::IsNullOrEmpty($LogFile))) {
+   # 	"$([DateTime]::Now.ToShortDateString()) $([DateTime]::Now.ToLongTimeString())   $Message" | Out-File $LogFile -Append
+   # }
 }
 
 #Endregion Toms Tools: Log
@@ -502,20 +559,22 @@ Function Download-File-FromUri {
       [Switch] $BreakScriptOnDownloadError,
 
       [Parameter(ValueFromPipelineByPropertyName, ParameterSetName = 'Force')]
-      [Switch] $Force
+      [Switch] $Force,
+
+      [Int]$Ident = 3
    )
 
    Process {
       ## Fehler prüfen
       # Fehlende $DownloadUrl
       If ($null -eq $DownloadUrl) {
-         Write-Error 'Download-File-FromUri(): Leere -DownloadUrl erhalten'
+         Log 4 'Download-File-FromUri(): Leere -DownloadUrl erhalten'
          Break Script
       }
 
       # $DestinationDir ist eine Datei
       If (Test-Path -LiteralPath $DestinationDir -PathType Leaf) {
-         Write-Error 'Download-File-FromUri(): -DestinationDir muss ein Verzeichnis sein!'
+         Log 4 'Download-File-FromUri(): -DestinationDir muss ein Verzeichnis sein!'
          Break Script
       }
 
@@ -545,8 +604,8 @@ Function Download-File-FromUri {
 			   # OK
 		   }
 		   Default {
-            Write-Host ('Fehler Download von: {0}' -f $DownloadUrl) -ForegroundColor Yellow
-            Write-Host ('> {0}: {1}' -f $Res.StatusCode, $Res.StatusDescription) -ForegroundColor Red
+            Log ($Ident) ('Fehler Download von: {0}' -f $DownloadUrl) -ForegroundColor Yellow
+            Log ($Ident) ('> {0}: {1}' -f $Res.StatusCode, $Res.StatusDescription) -ForegroundColor Red
             If ($BreakScriptOnDownloadError) { break Script }
 			   Return $Null
 	   	}
@@ -625,7 +684,7 @@ Function Extract-Zip() {
       If ($Force) {
          Remove-Item -LiteralPath $ZielDir -Recurse -Force
       } Else {
-         Write-Error ("ZielDir existiert bereits: {0}`n-Force nützen!" -f $ZielDir)
+         Log 4 ("ZielDir existiert bereits: {0}`n-Force nützen!" -f $ZielDir)
       }
    }
 
@@ -646,7 +705,7 @@ Function Extract-Zip() {
          $oZip.Dispose()
       }
    } Else {
-      Write-Error ('File existiert nicht: {0}' -f $ZipFile)
+      Log 4 ('File existiert nicht: {0}' -f $ZipFile)
    }
 }
 
@@ -662,14 +721,12 @@ Function New-Dir-Check-Permission($NewDir) {
       # $MessageId = ('{0:x}' -f $_.Exception.HResult).Trim([char]0)
       # $ErrorMessage = ($_.Exception.Message).Trim([char]0) # The network path was not found.
       If ($_.CategoryInfo.Category -eq 'PermissionDenied') {
-         Write-Host 'Kein Schreibrecht!, als Admin starten!' -ForegroundColor Red
-         Write-Host 'Abbruch.' -ForegroundColor Red
+         Log 4 'Kein Schreibrecht!, als Admin starten!' -ForegroundColor Red
+         Log 4 'Abbruch.' -ForegroundColor Red
          Break script
       }
    }
 }
-
-
 
 
 # Löscht ein Verzeichnis und stoppt, wenn wir PermissionDenied erhalten
@@ -690,8 +747,8 @@ Function Del-Dir-Check-Permission() {
       # $MessageId = ('{0:x}' -f $_.Exception.HResult).Trim([char]0)
       # $ErrorMessage = ($_.Exception.Message).Trim([char]0) # The network path was not found.
       If ( @('PermissionDenied', 'WriteError') -contains $_.CategoryInfo.Category) {
-         Write-Host 'Konnte das Verzeichnis nicht löschen:' -ForegroundColor Red
-         Write-Host "$DelDir" -ForegroundColor Yellow
+         Log 4 'Konnte das Verzeichnis nicht löschen:' -ForegroundColor Red
+         Log 4 "$DelDir" -ForegroundColor Yellow
          If ($AbortOnError) {
             Break Script
          }
@@ -739,7 +796,7 @@ Function Delete-Module() {
    }
 
    ## Das Modul entladen
-   Write-Verbose "Entlade Modul: $ModulName"
+   Log -IfVerbose 0 "Entlade Modul: $ModulName"
    Remove-Module -Name $ModulName -Force -EA SilentlyContinue
 
    # eg ModuleRootDir (Alias: ModuleBase)
@@ -749,7 +806,7 @@ Function Delete-Module() {
       Del-Dir-Check-Permission -DelDir $ModuleRootDir -AbortOnError:$AbortOnError
    } Else {
       # Bereits OK
-      # Write-Error ('Verzeichnis existiert nicht: {0}' -f $oGitHubModule.ModuleRootDir)
+      # Log 4 ('Verzeichnis existiert nicht: {0}' -f $oGitHubModule.ModuleRootDir)
    }
 }
 
@@ -811,8 +868,8 @@ Function Compare-Version() {
 
    If ($vLeft -eq $vRight) { Return [eVersionCompare]::Equal }
 
-   If ($vLeft -eq $null) { Return [eVersionCompare]::RightIsNewer }
-   If ($vRight -eq $null) { Return [eVersionCompare]::LeftIsNewer }
+   If ($null -eq $vLeft) { Return [eVersionCompare]::RightIsNewer }
+   If ($null -eq $vRight) { Return [eVersionCompare]::LeftIsNewer }
 
    If ($vLeft -gt $vRight) {
       Return [eVersionCompare]::LeftIsNewer
@@ -906,21 +963,21 @@ Function Copy-Dir-WithBlackList() {
       $IsBlacklisted = @($BlackListDirsRgx | ? { $RelativeSubDir -match $_ })
       If ($IsBlacklisted.Count -gt 0) {
          If ([String]::IsNullOrWhiteSpace($RelativeFileName)) {
-            Write-Verbose ('Blacklisted: {0}' -f $RelativeSubDir)
+            Log -IfVerbose 0 ('Blacklisted: {0}' -f $RelativeSubDir)
          } Else {
-            Write-Verbose ('Blacklisted: {0}' -f $RelativeFileName)
+            Log -IfVerbose 0 ('Blacklisted: {0}' -f $RelativeFileName)
          }
       } Else {
          # Haben wir ein Verzeichnis?
          If ($ThisItem.PSIsContainer) {
             # Ein Verzeichnis? > Erzeugen
             $ZielDir = Join-Path $DstDir $RelativeSubDir
-            Write-Verbose ('Erzeuge: {0}' -f $ZielDir)
+            Log -IfVerbose 0 ('Erzeuge: {0}' -f $ZielDir)
             New-Dir-Check-Permission -NewDir $ZielDir
          } Else {
             # Eine Datei? > Kopieren
             $RelativeZielFile = Join-Path $RelativeSubDir $ThisItem.Name
-            Write-Verbose ('Kopiere: {0}' -f $RelativeZielFile)
+            Log -IfVerbose 0 ('Kopiere: {0}' -f $RelativeZielFile)
             $ZielFile = Join-Path $DstDir $RelativeZielFile
             # Wenn sie schon existiert: Überschreiben?
             If ((Test-Path -LiteralPath $ZielFile) -and ($Overwrite -eq $False)) {
@@ -956,14 +1013,6 @@ Function Get-Module-ScopeDir() {
 }
 
 
-# Liefert vom Modulverzeichnis (c:\Program Files\WindowsPowerShell\Modules\GitHubRepository\1.2.0\)
-# Die Version als Obj
-# Debugged: OK
-Function Get-ModuleDir-Version($ModuleDir) {
-   [Version](Get-Item -LiteralPath $ModuleDir).Name
-}
-
-
 # Löscht allenfalls ein vorhandenes Modul
 # und installiert die neue Version
 Function Upgrade-Module() {
@@ -981,7 +1030,9 @@ Function Upgrade-Module() {
       # '^(\\|\.\\)*\.git'
       [String[]]$BlackListDirsRgx,
       # Wenn true, dann wird das Modul immer neu installiert, auch wenn es schon aktuell ist
-      [Switch]$Force
+      [Switch]$Force,
+
+      [Int]$Ident = 3
    )
 
    Switch ($PsCmdlet.ParameterSetName) {
@@ -997,7 +1048,7 @@ Function Upgrade-Module() {
                Delete-Module -ModuleName $oGitHubModule.ModuleName -ModuleDir $ZielDir -AbortOnError
                If (Test-Path -LiteralPath $ZielDir) {
                   # Das Modul existiert immer noch
-                  Write-Error ('Konnte das installierte Modul nicht löschen: {0}' -f $oGitHubModule.ModuleRootDir)
+                  Log 4 ('Konnte das installierte Modul nicht löschen: {0}' -f $oGitHubModule.ModuleRootDir)
                   Return
                }
             } Else {
@@ -1017,34 +1068,34 @@ Function Upgrade-Module() {
          # Ist das bereits installierte Modul veraltet?
          Switch ( (Compare-Version ([Version]$oGitHubModule.PSDData.ModuleVersion) $oInstalledModule.Version) ) {
             ([eVersionCompare]::Equal) {
-               Write-Host ('  Bereits aktuell')
+               Log ($Ident) ('  Bereits aktuell')
                If ($Force) {
-                  Write-Host ('  > forciere Installation')
+                  Log ($Ident+1) ('  > forciere Installation')
                   # Modul löschen
                   Delete-Module -oInstalledModule $oInstalledModule
                   If (Test-Path -LiteralPath $oInstalledModule.ModuleBase) {
                      # Das Modul existiert immer noch
-                     Write-Error ('Konnte das installierte Modul nicht löschen: {0}' -f $oInstalledModule.ModuleBase)
+                     Log 4 ('Konnte das installierte Modul nicht löschen: {0}' -f $oInstalledModule.ModuleBase)
                      Return
                   }
                   # Das Modul Installieren
                   Copy-Dir-WithBlackList -SrcDir $oGitHubModule.ModuleRootDir -DstDir $oInstalledModule.ModuleBase `
                      -BlackListDirsRgx $BlackListDirsRgx
                } Else {
-                  Write-Host '-Force wurde nicht angegeben > Modul wird nicht aktualisiert' -ForegroundColor Red
+                  Log ($Ident+1) '-Force wurde nicht angegeben > Modul wird nicht aktualisiert' -ForegroundColor Red
                }
             }
 
             ([eVersionCompare]::LeftIsNewer) {
-               Write-Host ('  Veraltet')
-               Write-Host ('   Installiert: {0} - GitHub: {1}' -f [String]$oInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
+               Log ($Ident) ('  Veraltet')
+               Log ($Ident+1) ('   Installiert: {0} - GitHub: {1}' -f [String]$oInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
                If ($Force) {
                   # Modul aktualisieren
-                  Write-Host ('  > Upgrade Module')
+                  Log ($Ident+1) ('  > Upgrade Module')
                   Delete-Module -oInstalledModule $oInstalledModule
                   If (Test-Path -LiteralPath $oInstalledModule.ModuleBase) {
                      # Das Modul existiert immer noch
-                     Write-Error ('Konnte das installierte Modul nicht löschen: {0}' -f $oInstalledModule.ModuleBase)
+                     Log 4 ('Konnte das installierte Modul nicht löschen: {0}' -f $oInstalledModule.ModuleBase)
                      Return
                   }
 
@@ -1053,186 +1104,20 @@ Function Upgrade-Module() {
                   Copy-Dir-WithBlackList -SrcDir $oGitHubModule.ModuleRootDir -DstDir $ZielDir `
                                          -BlackListDirsRgx $BlackListDirsRgx
                } Else {
-                  Write-Host '-Force wurde nicht angegeben > Modul wird nicht aktualisiert' -ForegroundColor Red
+                  Log ($Ident) '-Force wurde nicht angegeben > Modul wird nicht aktualisiert' -ForegroundColor Red
                }
             }
 
             ([eVersionCompare]::RightIsNewer) {
-               Write-Host '  Lokale Version ist neuer!'
-               Write-Host ('   Installiert: {0} - GitHub: {1}' -f [String]$oInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
-               Write-Host 'Lokale Kopie wird nicht aktualisiert!' -ForegroundColor Red
+               Log ($Ident) '  Lokale Version ist neuer!'
+               Log ($Ident+1) ('   Installiert: {0} - GitHub: {1}' -f [String]$oInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
+               Log ($Ident+1) 'Lokale Kopie wird nicht aktualisiert!' -ForegroundColor Red
             }
          }
 
       }
    }
 
-   Return
-
-   ## Ist bereits ein Modul installiert?
-   $HasModuleInstalled = $oInstalledModule -ne $null
-   $DeleteInstalledModule = $False
-   $InstallGitHubModule = $True
-   If ($HasModuleInstalled) {
-
-      # Ist das bereits installierte Modul im richtigen Scope?
-      $IsInRIghtScope = $oInstalledModule.eModuleScope -eq $eInstallScope
-
-
-      Switch ( (Compare-Version ([Version]$oGitHubModule.PSDData.ModuleVersion) $ThisInstalledModule.Version) ) {
-         ([eVersionCompare]::Equal) {
-            Write-Host ('  Bereits aktuell')
-            If ($Force) { $DeleteInstalledModule = $True }
-         }
-
-         ([eVersionCompare]::LeftIsNewer) {
-            Write-Host ('  Veraltet')
-            Write-Host ('   Installiert: {0} - GitHub: {1}' -f [String]$ThisInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
-            If ($UpgradeInstalledModule) {
-               $InstallModule = $True
-            } Else {
-               Write-Host '-UpgradeInstalledModule wurde nicht angegeben' -ForegroundColor Red
-               Write-Host 'Modul wird nicht aktualisiert' -ForegroundColor Red
-            }
-         }
-
-         ([eVersionCompare]::RightIsNewer) {
-            Write-Host '  Lokale Version ist neuer!'
-            Write-Host ('   Installiert: {0} - GitHub: {1}' -f [String]$ThisInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
-            Write-Host 'Lokale Kopie wird nicht aktualisiert!' -ForegroundColor Red
-         }
-      }
-
-
-      # Ist das GitHub Modul neuer?
-      If ([Version]$oGitHubModule.PSDData.ModuleVersion -gt $oInstalledModule.Version) {
-         $DeleteInstalledModule = $True
-      } Else {
-         # Das Installierte Modul ist bereits aktuell oder sogar neuer!
-         If ($Force) {
-            $DeleteInstalledModule = $True
-         } Else {
-            $InstallGitHubModule = $False
-         }
-      }
-
-      If ($DeleteInstalledModule) {
-         # Modul löschen
-         Delete-Module -ModuleBaseDir $oInstalledModule.ModuleBaseDir
-      }
-   }
-
-   ## Das Modul installieren
-   If (($DeleteInstalledModule) -and (Test-Path -LiteralPath $oInstalledModule.ModuleBaseDir)) {
-      # Das Modul existiert immer noch
-      Write-Error ('Konnte das installierte Modul nicht löschen: {0}' -f $oInstalledModule.ModuleBaseDir)
-   } Else {
-      # Löschen war OK
-      If ($InstallGitHubModule) {
-         # Das neue Modul Installieren
-         $ZielDir = Join-Path $InstallScopeDir $oGitHubModule.ModuleInstallSubDir
-
-         Copy-Dir-WithBlackList -SrcDir $oGitHubModule.ModuleRootDir -DstDir $ZielDir `
-            -BlackListDirsRgx $BlackListDirsRgx
-
-      }
-      # Das Modul laden
-      Import-Module $oGitHubModule.ModuleName
-   }
-}
-
-
-# Testet, ob ein Modul aktualisiert werden soll
-# und aktualisiert es allenfalls
-Function Test-Module-Update() {
-   [CmdletBinding()]
-   Param(
-      [PSModuleInfo]$oInstalledModule,
-      [Parameter(Mandatory)][PSCustomObject]$oGitHubModule,
-      # Wenn das Modul noch nicht schon installiert ist, wird dieser Scope benützt
-      [eModuleScope]$ProposedDefaultScopeDir,
-      # Auch wenn das Modul schon in einem anderen Scope installiert ist, wird es trotzdem in diesem Scope installiert
-      [eModuleScope]$EnforceScopeDir,
-      # Aktualisiert das Modul, wenn es bereits installiert ist
-      [Switch]$UpgradeInstalledModule,
-      # Das oberste Verzeichnis:
-      # '^(\\|\.\\)*\.git'
-      [String[]]$BlackListDirsRgx,
-      # Erzwingt die Installation immer
-      [Switch]$Force
-   )
-
-
-   If ($oInstalledModule -eq $null) {
-      # Das Modul noch nicht installiert
-      If ($EnforceScopeDir) {
-         $ZielScopeDir = Join-Path $EnforceScopeDir $oGitHubModule.ModuleInstallSubDir
-      } Else {
-         $ZielScopeDir = Join-Path $ProposedDefaultScopeDir $oGitHubModule.ModuleInstallSubDir
-      }
-
-      # Das Modul installieren
-      Upgrade-Module -InstallScopeDir $ZielScopeDir -oGitHubModule $oGitHubModule `
-         -BlackListDirsRgx $BlackListDirsRgx -oInstalledModule $oInstalledModule `
-         -Force $Force
-
-   } Else {
-      # Das Modul ist bereits installiert
-      $InstalledModuleScopeDir = Get-Module-ScopeDir -oModule $oInstalledModule
-
-      $InstallModule = $False
-      $ZielScopeDir = $Null
-      Switch ( (Compare-Version ([Version]$oGitHubModule.PSDData.ModuleVersion) $oInstalledModule.Version) ) {
-         ([eVersionCompare]::Equal) {
-            Write-Host ('  Bereits aktuell')
-            If ($Force) {
-               $InstallModule = $True
-               If ($EnforceScopeDir) {
-                  $ZielScopeDir = Join-Path $EnforceScopeDir $oGitHubModule.ModuleInstallSubDir
-               } Else {
-                  $ZielScopeDir = Join-Path $ProposedDefaultScopeDir $oGitHubModule.ModuleInstallSubDir
-               }
-            }
-         }
-         ([eVersionCompare]::LeftIsNewer) {
-            Write-Host ('  Veraltet')
-            Write-Host ('   Installiert: {0} - GitHub: {1}' -f [String]$ThisInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
-            If ($UpgradeInstalledModule) {
-               $InstallModule = $True
-               $ZielScopeDir = Join-Path $InstalledModuleScopeDir
-            } Else {
-               Write-Host '-UpgradeInstalledModule wurde nicht angegeben' -ForegroundColor Red
-               Write-Host 'Modul wird nicht aktualisiert' -ForegroundColor Red
-            }
-         }
-         ([eVersionCompare]::RightIsNewer) {
-            Write-Host '  Lokale Version ist neuer!'
-            Write-Host ('   Installiert: {0} - GitHub: {1}' -f [String]$ThisInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
-            Write-Host 'Lokale Kopie wird nicht aktualisiert!' -ForegroundColor Red
-         }
-      }
-
-
-
-      ## Bestehende Module aktualisieren?
-      If ($UpgradeInstalledModule) {
-         $ZielScopeDir = $InstalledModuleScopeDir
-
-         # Das Modul aktualisieren
-         Upgrade-Module -InstallScopeDir $ZielScopeDir -oGitHubModule $oGitHubModule `
-            -BlackListDirsRgx $BlackListDirsRgx -oInstalledModule $oInstalledModule `
-            -Force:$True
-      }
-
-      ## Modul zwingend in einen Scope installieren?
-      If ($EnforceScopeDir) {
-         $ZielScopeDir = Join-Path $EnforceScopeDir $oGitHubModule.ModuleInstallSubDir
-         # Das Modul aktualisieren
-         Upgrade-Module -InstallScopeDir $ZielScopeDir -oGitHubModule $oGitHubModule `
-            -BlackListDirsRgx $BlackListDirsRgx -oInstalledModule $oInstalledModule `
-            -Force $Force
-      }
-   }
 }
 
 
@@ -1263,7 +1148,7 @@ Function Get-ModuleScope-Type($ScopeDir) {
 Filter Assert-eModuleScope {
    If ($_ -ne $Null) {
       If ($_.GetType().Name -ne 'eModuleScope') {
-         Write-Error "Müsste ein [eModuleScope] sein: $($_)"
+         Log 4 "Müsste ein [eModuleScope] sein: $($_)"
       }
    }
 }
@@ -1289,11 +1174,12 @@ Function Check-Install-GitHubModule() {
       # '^(\\|\.\\)*\.git'
       [String[]]$BlackListDirsRgx,
       # Erzwingt die Installation immer
-      [Switch]$Force
+      [Switch]$Force,
+      [Int]$Ident = 3
    )
 
    # Das Modul ist in einem Scope installiert
-   Write-Host (' {0}' -f $oInstalledModule.ModuleBase) -NoNewline
+   Log ($Ident) (' {0}' -f $oInstalledModule.ModuleBase) -NoNewline
 
    # Das Scope-Dir bestimmen
    $InstalledModuleScopeDir = Get-Module-ScopeDir -oModule $oInstalledModule
@@ -1311,47 +1197,41 @@ Function Check-Install-GitHubModule() {
    $UpgradeExistingModule = $False
    Switch ( (Compare-Version ([Version]$oGitHubModule.PSDData.ModuleVersion) $oInstalledModule.Version) ) {
             ([eVersionCompare]::Equal) {
-         Write-Host ('  Bereits aktuell')
+         Log ($Ident+1) ('  Bereits aktuell')
          # Wenn installierte Module zwingend installiert werden sollen
-         # 221114 200528
-         # If ($UpgradeInstalledModule -or ($IsInRightScope -and $Force)) {
-         #    If ($Force) { Write-Host ('  > Forciere Neuinstallation') }
-         #    Else { Write-Host ('  > Aktualisiere Modul') }
-         #    $UpgradeExistingModule = $True
-         # }
          If ($IsInRightScope) {
             If ($Force) {
-               Write-Host ('  > Forciere Neuinstallation')
+               Log ($Ident+1) ('  > Forciere Neuinstallation')
                $UpgradeExistingModule = $True
             }
          } Else {
             # Wenn das Modul nicht im richtigen Scope ist,
             # die schon richtige Version nur bei -Force aktualisieren
             If ($UpgradeInstalledModule -and $Force) {
-               Write-Host ('  > Forciere Neuinstallation')
+               Log ($Ident+1) ('  > Forciere Neuinstallation')
                $UpgradeExistingModule = $True
             }
          }
       }
 
       ([eVersionCompare]::LeftIsNewer) {
-         Write-Host ('  Veraltet')
-         Write-Host ('   Version installiert: {0} - Version GitHub: {1}' -f [String]$oInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
+         Log ($Ident) ('  Veraltet')
+         Log ($Ident+1) ('   Version installiert: {0} - Version GitHub: {1}' -f [String]$oInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
          If ($UpgradeInstalledModule -or ($IsInRightScope -and $Force)) {
-            If ($Force) { Write-Host ('  > Forciere Neuinstallation') }
-            Else { Write-Host ('  > Aktualisiere Modul') }
+            If ($Force) { Log ($Ident+1) ('  > Forciere Neuinstallation') }
+            Else { Log ($Ident+1) ('  > Aktualisiere Modul') }
             $UpgradeExistingModule = $True
          }
          Else {
-            Write-Host '-UpgradeInstalledModule wurde nicht angegeben' -ForegroundColor Red
-            Write-Host 'Modul wird nicht aktualisiert' -ForegroundColor Red
+            Log ($Ident) '-UpgradeInstalledModule wurde nicht angegeben' -ForegroundColor Red
+            Log ($Ident+1) 'Modul wird nicht aktualisiert' -ForegroundColor Red
          }
       }
 
       ([eVersionCompare]::RightIsNewer) {
-         Write-Host '  Lokale Version ist neuer!'
-         Write-Host ('   Version installiert: {0} - Version GitHub: {1}' -f [String]$oInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
-         Write-Host 'Lokale Kopie wird nicht aktualisiert!' -ForegroundColor Red
+         Log ($Ident) '  Lokale Version ist neuer!'
+         Log ($Ident+1) ('   Version installiert: {0} - Version GitHub: {1}' -f [String]$oInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
+         Log ($Ident+1) 'Lokale Kopie wird nicht aktualisiert!' -ForegroundColor Red
       }
    }
    # Das installierte Modul aktualisieren
@@ -1396,14 +1276,15 @@ Function Check-Install-GitHubModules() {
       # '^(\\|\.\\)*\.git'
       [String[]]$BlackListDirsRgx,
       # Erzwingt die Installation immer
-      [Switch]$Force
+      [Switch]$Force,
+      [Int]$Ident = 3
    )
 
 
-   Write-Host 'Installiere GitHub Modul'
-   Write-Host (' Modulname: {0}' -f $oGitHubModule.ModuleName)
-   Write-Host (' Version  : {0}' -f $oGitHubModule.PSDData.ModuleVersion)
-   Write-Host (' Quell-Dir: {0}' -f $oGitHubModule.ModuleRootDir)
+   Log ($Ident) 'Installiere GitHub Modul'
+   Log ($Ident+1) (' Modulname: {0}' -f $oGitHubModule.ModuleName)
+   Log ($Ident+1) (' Version  : {0}' -f $oGitHubModule.PSDData.ModuleVersion)
+   Log ($Ident+1) (' Quell-Dir: {0}' -f $oGitHubModule.ModuleRootDir)
 
    ## Prepare
    $eDefaultScope | Assert-eModuleScope
@@ -1430,7 +1311,7 @@ Function Check-Install-GitHubModules() {
       1 {
          # Das Modul ist in einem Scope installiert
          $ThisInstalledModule = $InstalledModules[0]
-         Write-Host (' {0}' -f $ThisInstalledModule.ModuleBase) -NoNewline
+         Log ($Ident) (' {0}' -f $ThisInstalledModule.ModuleBase) -NoNewline
 
          Check-Install-GitHubModule -oGitHubModule $oGitHubModule -oInstalledModule $ThisInstalledModule `
                                     -eDefaultScope $eDefaultScope -eEnforceScope $eEnforceScope `
@@ -1440,10 +1321,10 @@ Function Check-Install-GitHubModules() {
 
       Default {
          # Das Modul ist in mehreren Scopes installiert
-         Write-Host ' Das Modul ist in mehreren Scopes installiert'
+         Log ($Ident) ' Das Modul ist in mehreren Scopes installiert'
          ForEach ($InstalledModule in $InstalledModules) {
             # $ThisModuleScopeDir = ($InstalledModule.ModuleBase -split '\\' | select -SkipLast 2) -join '\'
-            Write-Host (' {0}' -f $InstalledModule.ModuleBase) -NoNewline
+            Log ($Ident+1) (' {0}' -f $InstalledModule.ModuleBase) -NoNewline
 
             Check-Install-GitHubModule -oGitHubModule $oGitHubModule -oInstalledModule $InstalledModule `
                -eDefaultScope $eDefaultScope -eEnforceScope $eEnforceScope `
@@ -1455,175 +1336,6 @@ Function Check-Install-GitHubModules() {
 
 }
 
-
-
-# Prüft, ob für das von GitHub heruntergeladenes Modul
-# in 1 oder mehreren PS Module Scopes installiert werden kann / muss
-Function Check-Install-GitHubModules_001() {
-   [CmdletBinding()]
-   Param(
-      [Parameter(Mandatory)]
-      # Das zu installierende Modul von GitHub
-      [PSCustomObject]$oGitHubModule,
-      [Parameter(Mandatory)]
-      # Die Liste der installierten Module
-      [Array]$oModulesList,
-      # Wenn das Modul noch nicht schon installiert ist, wird dieser Scope benützt
-      [Object]$eDefaultScope,
-      # Auch wenn das Modul schon in einem anderen Scope installiert ist, wird es trotzdem in diesem Scope installiert
-      [Object]$eEnforceScope,
-      # Aktualisiert das Modul, wenn es bereits installiert ist
-      [Switch]$UpgradeInstalledModule,
-      # Das oberste Verzeichnis:
-      # '^(\\|\.\\)*\.git'
-      [String[]]$BlackListDirsRgx,
-      # Erzwingt die Installation immer
-      [Switch]$Force
-   )
-
-
-   Write-Host 'Installiere GitHub Modul'
-   Write-Host (' Modulname: {0}' -f $oGitHubModule.ModuleName)
-   Write-Host (' Version  : {0}' -f $oGitHubModule.PSDData.ModuleVersion)
-   Write-Host (' Quell-Dir: {0}' -f $oGitHubModule.ModuleRootDir)
-
-   ## Prepare
-   $eDefaultScope | Assert-eModuleScope
-   $eEnforceScope | Assert-eModuleScope
-
-   # Ist das Modul bereits installiert?
-   $InstalledModules = @($oModulesList | ? Name -eq $oGitHubModule.ModuleName)
-
-   Switch ($InstalledModules.Count) {
-      0 {
-         # Debugged: OK
-         # Noch nicht installiert - das Modul kopieren
-         # Nur, wenn ein Zielscope angegeben wurde
-         If ($eEnforceScope) { $eZielScope = $eEnforceScope }
-         Else { $eZielScope = $eDefaultScope }
-         If ($eZielScope) {
-            Upgrade-Module -oGitHubModule $oGitHubModule `
-                           -eInstallScope $eZielScope `
-                           -BlackListDirsRgx $BlackListDirsRgx `
-                           -Force:$Force
-         }
-      }
-
-      1 {
-         # Das Modul ist in einem Scope installiert
-         $ThisInstalledModule = $InstalledModules[0]
-         Write-Host (' {0}' -f $ThisInstalledModule.ModuleBase) -NoNewline
-
-         # Das Scope-Dir bestimmen
-         $InstalledModuleScopeDir = Get-Module-ScopeDir -oModule $ThisInstalledModule
-         $InstalledeModuleScopeType = Get-ModuleScope-Type -ScopeDir $InstalledModuleScopeDir
-
-         # Ist das Modul im gewünschten Scope?
-         $IsInRightScope = $True
-         If ($eEnforceScope -and ($InstalledeModuleScopeType -ne $eEnforceScope)) {
-            $IsInRightScope = $False
-         }
-
-         # Ist das installierte Modul veraltet?
-         $UpgradeExistingModule = $False
-         Switch ( (Compare-Version ([Version]$oGitHubModule.PSDData.ModuleVersion) $ThisInstalledModule.Version) ) {
-            ([eVersionCompare]::Equal) {
-               Write-Host ('  Bereits aktuell')
-               # Wenn installierte Module zwingend installiert werden sollen
-               If ($UpgradeInstalledModule -or ($IsInRightScope -and $Force)) {
-                  If ($Force) { Write-Host ('  > Forciere Neuinstallation') }
-                  Else { Write-Host ('  > Aktualisiere Modul') }
-                  $UpgradeExistingModule = $True
-               }
-            }
-
-            ([eVersionCompare]::LeftIsNewer) {
-               Write-Host ('  Veraltet')
-               Write-Host ('   Version installiert: {0} - Version GitHub: {1}' -f [String]$ThisInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
-               If ($UpgradeInstalledModule -or ($IsInRightScope -and $Force)) {
-                  If ($Force) { Write-Host ('  > Forciere Neuinstallation') }
-                  Else { Write-Host ('  > Aktualisiere Modul') }
-                  $UpgradeExistingModule = $True
-               } Else {
-                  Write-Host '-UpgradeInstalledModule wurde nicht angegeben' -ForegroundColor Red
-                  Write-Host 'Modul wird nicht aktualisiert' -ForegroundColor Red
-               }
-            }
-
-            ([eVersionCompare]::RightIsNewer) {
-               Write-Host '  Lokale Version ist neuer!'
-               Write-Host ('   Version installiert: {0} - Version GitHub: {1}' -f [String]$ThisInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
-               Write-Host 'Lokale Kopie wird nicht aktualisiert!' -ForegroundColor Red
-            }
-         }
-         # Das installierte Modul aktualisieren
-         If ($UpgradeExistingModule) {
-            # Das Modul aktualisieren
-            Upgrade-Module -oGitHubModule $oGitHubModule -oInstalledModule $ThisInstalledModule `
-                           -BlackListDirsRgx $BlackListDirsRgx `
-                           -Force:$True
-         }
-
-         # Das Modul im richtigen Scope installieren
-         If ($IsInRightScope -eq $False) {
-            If ($eEnforceScope) { $eZielScope = $eEnforceScope }
-            Else { $eZielScope = $eDefaultScope }
-            Upgrade-Module -oGitHubModule $oGitHubModule `
-                           -eInstallScope $eZielScope `
-                           -BlackListDirsRgx $BlackListDirsRgx `
-                           -Force:$Force
-         }
-      }
-
-      Default {
-         # Das Modul ist in mehreren Scopes installiert
-         Write-Host ' Das Modul ist in mehreren Scopes installiert'
-         ForEach ($InstalledModule in $InstalledModules) {
-            # $ThisModuleScopeDir = ($InstalledModule.ModuleBase -split '\\' | select -SkipLast 2) -join '\'
-            Write-Host (' {0}' -f $InstalledModule.ModuleBase) -NoNewline
-            $ThisModuleScopeDir = Get-Module-ScopeDir -oModule $InstalledModule
-
-            $UpgradeExistingModule = $False
-            Switch ( (Compare-Version ([Version]$oGitHubModule.PSDData.ModuleVersion) $InstalledModule.Version) ) {
-               ([eVersionCompare]::Equal) {
-                  Write-Host '  Bereits aktuell'
-                  If ($Force) { $InstallModule = $True }
-               }
-
-               ([eVersionCompare]::LeftIsNewer) {
-                  Write-Host '  Das Modul ist veraltet'
-                  Write-Host ('   Installierte Version: {0} - GitHub Version: {1}' -f [String]$InstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
-                  If ($UpgradeInstalledModule -or ($IsInRightScope -and $Force)) {
-                     If ($Force) { Write-Host ('  > Forciere Neuinstallation') }
-                     Else { Write-Host ('  > Aktualisiere Modul') }
-                     $UpgradeExistingModule = $True
-                  }
-                  Else {
-                     Write-Host '-UpgradeInstalledModule wurde nicht angegeben' -ForegroundColor Red
-                     Write-Host 'Modul wird nicht aktualisiert' -ForegroundColor Red
-                  }
-               }
-
-               ([eVersionCompare]::RightIsNewer) {
-                  Write-Host '  Lokale Version ist neuer!'
-                  Write-Host ('   Installiert: {0} - GitHub: {1}' -f [String]$InstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
-                  Write-Host 'Lokale Kopie wird nicht aktualisiert!' -ForegroundColor Red
-               }
-            }
-            # Das installierte Modul aktualisieren
-            If ($UpgradeExistingModule) {
-               # Das Modul aktualisieren
-               # Upgrade-Module -InstallScopeDir $ZielScopeDir -oGitHubModule $oGitHubModule `
-               #    -BlackListDirsRgx $BlackListDirsRgx -oInstalledModule $ThisInstalledModule
-               Upgrade-Module -oGitHubModule $oGitHubModule -oInstalledModule $ThisInstalledModule `
-                  -BlackListDirsRgx $BlackListDirsRgx `
-                  -Force:$True
-            }
-         }
-      }
-   }
-
-}
 
 
 # Berechnet für jedes Modul den Scope, in dem es installiert ist
@@ -1662,7 +1374,7 @@ Function Add-Module-ScopeData() {
 # Erzeugt aus einem String[] eine Liste von PSCustomObject
 # Debugged: OK
 Function Array-ToObj() {
-   [CmdletBinding(SupportsShouldProcess)]
+   [CmdletBinding()]
    Param(
       [String[]]$Items
    )
@@ -1732,12 +1444,12 @@ If ($UpgradeInstalledModule -eq $False `
    -and $InstallAllModules -eq $False `
    -and ($oInstallModuleNames | Measure).Count -eq 0) {
 
-   Write-Host 'Fehler:' -ForegroundColor Red -NoNewline
-   Write-Host 'Mindestens einer dieser Parameter muss angegeben werden:'  -ForegroundColor Red
+   Log 4 'Fehler:' -ForegroundColor Red -NoNewline
+   Log 4 'Mindestens einer dieser Parameter muss angegeben werden:' -ForegroundColor Red
    '-UpgradeInstalledModule','-InstallAllModules','-InstallModuleNames' | % {
-      Write-Host (' {0}' -f $_)
+      Log 5 $_
    }
-   Write-Host 'Abbruch'  -ForegroundColor Red
+   Log 4 'Abbruch' -ForegroundColor Red
    Break Script
 }
 
@@ -1816,7 +1528,7 @@ Try {
 
    ## Ist die zip Datei vorhanden?
    If (-not(Test-Path -LiteralPath $RepositoryZipFileName -PathType Leaf)) {
-      Write-Host ('Zip-Datei nicht gefunden: {0}' -f $RepositoryZipFileName) -ForegroundColor Red
+      Log 4 ('Zip-Datei nicht gefunden: {0}' -f $RepositoryZipFileName) -ForegroundColor Red
       Break Script
    }
 
@@ -1829,7 +1541,7 @@ Try {
 
    ## Alle gefundenen PS Module verarbeiten
    ForEach ($FoundGitHubModule in $FoundGitHubModules) {
-      Write-Verbose ('Testing: {0}' -f $FoundGitHubModule.ModuleName)
+      Log -IfVerbose 0 ('Testing: {0}' -f $FoundGitHubModule.ModuleName)
 
       # Das Dummy-PS-Module überspringen, ausser Pester ist aktiv
       If (($FoundGitHubModule.ModuleName -eq 'Dummy-PS-Module') `
@@ -1843,7 +1555,7 @@ Try {
       $oModuleToInstall | % { $_.FoundOnGitHub = $True }
 
       If ($InstallAllModules -or $oModuleToInstall) {
-         Write-Verbose ("Prüfe Modul: ")
+         Log -IfVerbose 0 ("Prüfe Modul: ")
          Check-Install-GitHubModules -oGitHubModule $FoundGitHubModule -oModulesList $UsersModules `
             -eDefaultScope $eDefaultScope -eEnforceScope $eEnforceScope `
             -UpgradeInstalledModule:$UpgradeInstalledModule `
@@ -1851,17 +1563,31 @@ Try {
             -Force:$Force
 
        } Else {
-         Write-Verbose ('Skipped')
+         Log -IfVerbose 0 ('Skipped')
       }
-
    }
+
 
    ## Wollte der User Module installieren, die das GitHub Repo nicht hat?
    $MissingGithubModules = $oInstallModuleNames | ? FoundOnGitHub -eq $False
    If ($MissingGithubModules) {
-      Write-Host 'Module auf GitHub nicht gefunden:' -ForegroundColor Red
+      Log 4 'Module auf GitHub nicht gefunden:' -ForegroundColor Red
       $MissingGithubModules | % { Write-Host " $($_.Item)" }
    }
+
+} Catch {
+   $MessageId = ('{0:x}' -f $_.Exception.HResult).Trim([char]0)
+   $ErrorMessage = ($_.Exception.Message).Trim([char]0) # The network path was not found.
+   $ExceptionStackTrace = $_.Exception.StackTrace
+   Write-Host ('{0}: {1}' -f $MessageId, $ErrorMessage)
+   Write-Host "`nErrorDetails"
+   Write-Host $_.ErrorDetails
+   Write-Host "`nScriptStackTrace"
+   Write-Host $_.ScriptStackTrace
+   Write-Host "`nExceptionStackTrace"
+   Write-Host $ExceptionStackTrace
+   Write-Host "`nStackTrace"
+   Write-Host $StackTrace
 
 } Finally {
    # Das Arbeitsverzeichnis löschen

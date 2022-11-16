@@ -13,7 +13,14 @@
          // "args": ["-ProposedDefaultScope AllUsers", "-EnforceScope CurrentUser"]
          // "args": ["-ProposedDefaultScope AllUsers", "-InstallAllModules", "-Verbose", "-Force"]
          // "args": ["-UpgradeInstalledModule", "-InstallAllModules", "-Verbose", "-Force"]
-         "args": ["-ProposedDefaultScope CurrentUser", "-InstallAllModules", "-Verbose", "-Force"]
+         // "args": ["-ProposedDefaultScope CurrentUser", "-InstallAllModules", "-Verbose", "-Force"]
+         "args": ["-GitHubRepoUrl 'https://github.com/iainbrighton/GitHubRepository'",
+                     "-ProposedDefaultScope AllUsers",
+                     "-UpgradeInstalledModule",
+                     "-InstallAllModules",
+                     "-Force",
+                     "-Verbose"
+                  ]
       }
    ]
 }

@@ -11,6 +11,7 @@
 #  ## Variante 2
 #  # cd ins Verzeichnis, dann:
 #  Invoke-Pester .\Install-Module-GitHub.Tests.ps1 -Output Diagnostic
+#  Invoke-Pester .\Install-Module-GitHub.Tests.ps1 -Output Diagnostic -Tags '#31a'
 #
 #
 # 001, 221114, Tom@jig.ch
@@ -246,7 +247,7 @@ Describe 'Test Install-Module-GitHub.ps1' {
    }
 
 
-   Describe 'Test-Set #10: PS Modul nicht installiert' {
+   Describe 'Test-Set #10: PS Modul ist noch nicht bereits installiert' {
 
       BeforeEach {
          # Allenfalls alle Versionen des installierten Dummy Modules löschen
@@ -267,10 +268,10 @@ Describe 'Test Install-Module-GitHub.ps1' {
          $Null = & $InstallModuleGitHub_ps1 -PesterIsActive `
                                  -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
                                  -ProposedDefaultScope ([Enum]::ToObject([eModuleScope], $ZielScope)) `
-                                 -InstallAllModules
+                                 -InstallAllModules -verbose
 
          # Wurde das Modul installiert?
-         Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($ZielScope)] $ModuleVersions[($InstallVersion)].ModuleSubDir) | Should -Be $True
+#        Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($ZielScope)] $ModuleVersions[($InstallVersion)].ModuleSubDir) | Should -Be $True
       }
 
 
@@ -279,10 +280,20 @@ Describe 'Test Install-Module-GitHub.ps1' {
          $InstallVersion = [Int][eModulVersion]::V100
          $ZielScope = [Int][eModuleScope]::CurrentUser
 
-         $Null = & $InstallModuleGitHub_ps1 -PesterIsActive `
+         $a1 = Join-Path $ModuleScopesDir[($ZielScope)] $ModuleVersions[($InstallVersion)].ModuleSubDir
+         Write-host "A1-1: $a1"
+
+         $Res = & $InstallModuleGitHub_ps1 -PesterIsActive `
                                  -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
                                  -ProposedDefaultScope ([Enum]::ToObject([eModuleScope], $ZielScope)) `
-                                 -InstallAllModules
+                                 -InstallAllModules -Verbos
+
+
+         Write-host "Res : $Res"
+
+         Write-host "a1-2: $a1"
+         $a2 = Join-Path $ModuleScopesDir[($ZielScope)] $ModuleVersions[($InstallVersion)].ModuleSubDir
+         Write-host "a2  : $a2"
 
          # Wurde das Modul installiert?
          Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($ZielScope)] $ModuleVersions[($InstallVersion)].ModuleSubDir) | Should -Be $True
@@ -295,6 +306,7 @@ Describe 'Test Install-Module-GitHub.ps1' {
       }
 
    }
+
 
    Describe 'Test-Set #20: PS Modul in Scope AllUsers installiert' {
 
@@ -748,8 +760,6 @@ Describe 'Test Install-Module-GitHub.ps1' {
          # Allenfalls alle Versionen des installierten Dummy Modules löschen
          Delete-PSModuleDir-AllVersions -ModuleName $Script:DummyModuleName -DeleteAllUsers -DeleteCurrentUser
       }
-
-
    }
 
 
