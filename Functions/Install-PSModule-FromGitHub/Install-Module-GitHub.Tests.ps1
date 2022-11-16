@@ -731,6 +731,253 @@ Describe 'Test Install-Module-GitHub.ps1' {
 
    }
 
+
+   Describe 'Test-Set #50: Test GitHub Download' {
+
+      BeforeEach {
+         # Vor jedem einzelnen Test...
+      }
+
+
+      ## -GitHubRepoUrl
+      It -Name '#51a -GitHubRepoUrl aufs GitHub Hauptprojekt' {
+
+         $TestUrl = 'https://github.com/rtCamp/login-with-google'
+
+         # Download starten
+         $DownloadedZipFileName = & $InstallModuleGitHub_ps1 -GitHubRepoUrl $TestUrl `
+                                             -PesterTestGithubDownloadOnly
+
+         # Zip-File muss existieren
+         Test-Path -LiteralPath $DownloadedZipFileName | Should -Be $True
+
+         # File löschen
+         Remove-Item -Force -EA SilentlyContinue -LiteralPath $DownloadedZipFileName
+      }
+
+      It -Name '#51b -GitHubRepoUrl auf einen GitHub Branch' {
+
+         $TestUrl = 'https://github.com/rtCamp/login-with-google/tree/develop'
+
+         # Download starten
+         $DownloadedZipFileName = & $InstallModuleGitHub_ps1 -GitHubRepoUrl $TestUrl `
+                                             -PesterTestGithubDownloadOnly
+
+         # Zip-File muss existieren
+         Test-Path -LiteralPath $DownloadedZipFileName | Should -Be $True
+
+         # File löschen
+         Remove-Item -Force -EA SilentlyContinue -LiteralPath $DownloadedZipFileName
+      }
+
+      It -Name '#51c -GitHubRepoUrl auf ein GitHub Tag' {
+
+         $TestUrl = 'https://github.com/rtCamp/login-with-google/releases/tag/1.3.1'
+
+         # Download starten
+         $DownloadedZipFileName = & $InstallModuleGitHub_ps1 -GitHubRepoUrl $TestUrl `
+                                             -PesterTestGithubDownloadOnly
+
+         # Zip-File muss existieren
+         Test-Path -LiteralPath $DownloadedZipFileName | Should -Be $True
+
+         # File löschen
+         Remove-Item -Force -EA SilentlyContinue -LiteralPath $DownloadedZipFileName
+      }
+
+
+      ## -GitHubRepoUrl
+      It -Name '#51d -GitHubRepoUrl ungültig' {
+
+         $TestUrl = 'https://github.com/22111601059/login-with-google'
+
+         # Download starten
+         Try {
+            $DownloadedZipFileName = & $InstallModuleGitHub_ps1 -GitHubRepoUrl $TestUrl `
+                                                -PesterTestGithubDownloadOnly
+         } Catch {
+            # $MessageId = ('{0:x}' -f $_.Exception.HResult).Trim([char]0)
+            $ErrorMessage = ($_.Exception.Message).Trim([char]0) # The network path was not found.
+            # Wir erhalten: The remote server returned an error: (404) Not Found.
+            $ErrorMessage | Should -Match '(404)'
+         }
+
+         # Kein Zip-File name
+         $DownloadedZipFileName | Should -Be $Null
+      }
+
+
+      It -Name '#52a -GitHubZipUrl aufs GitHub Hauptprojekt' {
+
+         $TestUrl = 'https://github.com/rtCamp/login-with-google/archive/refs/heads/develop.zip'
+
+         # Download starten
+         $DownloadedZipFileName = & $InstallModuleGitHub_ps1 -GitHubZipUrl $TestUrl `
+                                             -PesterTestGithubDownloadOnly
+
+         # Zip-File muss existieren
+         Test-Path -LiteralPath $DownloadedZipFileName | Should -Be $True
+
+         # File löschen
+         Remove-Item -Force -EA SilentlyContinue -LiteralPath $DownloadedZipFileName
+      }
+
+      It -Name '#52b -GitHubZipUrl ungültig' {
+
+         $TestUrl = 'https://github.com/221116101858/login-with-google/archive/refs/heads/develop.zip'
+
+         # Download starten
+         Try {
+            $DownloadedZipFileName = & $InstallModuleGitHub_ps1 -GitHubZipUrl $TestUrl `
+                                                -PesterTestGithubDownloadOnly
+         } Catch {
+            # $MessageId = ('{0:x}' -f $_.Exception.HResult).Trim([char]0)
+            $ErrorMessage = ($_.Exception.Message).Trim([char]0) # The network path was not found.
+            # Wir erhalten: The remote server returned an error: (404) Not Found.
+            $ErrorMessage | Should -Match '(404)'
+         }
+
+         # Kein Zip-File name
+         $DownloadedZipFileName | Should -Be $Null
+      }
+
+
+      ## -GitHubOwnerName mit RepoName & Branch
+      It -Name '#53a -GitHubOwnerName mit RepoName & Branch' {
+         $GitHubOwnerName = 'rtCamp'
+         $GitHubRepoName = 'login-with-google'
+         $GitHubBranchName = 'master'
+
+         # Download starten
+         $DownloadedZipFileName = & $InstallModuleGitHub_ps1 -GitHubOwnerName $GitHubOwnerName `
+            -GitHubRepoName $GitHubRepoName -GitHubBranchName $GitHubBranchName `
+            -PesterTestGithubDownloadOnly
+
+         # Zip-File muss existieren
+         Test-Path -LiteralPath $DownloadedZipFileName | Should -Be $True
+
+         # File löschen
+         Remove-Item -Force -EA SilentlyContinue -LiteralPath $DownloadedZipFileName
+      }
+
+      It -Name '#53b -GitHubOwnerName mit ungültigem $GitHubOwnerName' {
+         $GitHubOwnerName = '221116102811'
+         $GitHubRepoName = 'login-with-google'
+         $GitHubBranchName = 'master'
+
+         # Download starten
+         Try {
+            # Download starten
+            $DownloadedZipFileName = & $InstallModuleGitHub_ps1 -GitHubOwnerName $GitHubOwnerName `
+               -GitHubRepoName $GitHubRepoName -GitHubBranchName $GitHubBranchName `
+               -PesterTestGithubDownloadOnly
+         }
+         Catch {
+            # $MessageId = ('{0:x}' -f $_.Exception.HResult).Trim([char]0)
+            $ErrorMessage = ($_.Exception.Message).Trim([char]0) # The network path was not found.
+            # Wir erhalten: The remote server returned an error: (404) Not Found.
+            $ErrorMessage | Should -Match '(404)'
+         }
+
+         # Kein Zip-File name
+         $DownloadedZipFileName | Should -Be $Null
+      }
+
+      It -Name '#53c -GitHubOwnerName mit ungültigem $GitHubRepoName' {
+         $GitHubOwnerName = 'rtCamp'
+         $GitHubRepoName = '221116102811'
+         $GitHubBranchName = 'master'
+
+         # Download starten
+         Try {
+            # Download starten
+            $DownloadedZipFileName = & $InstallModuleGitHub_ps1 -GitHubOwnerName $GitHubOwnerName `
+               -GitHubRepoName $GitHubRepoName -GitHubBranchName $GitHubBranchName `
+               -PesterTestGithubDownloadOnly
+         }
+         Catch {
+            # $MessageId = ('{0:x}' -f $_.Exception.HResult).Trim([char]0)
+            $ErrorMessage = ($_.Exception.Message).Trim([char]0) # The network path was not found.
+            # Wir erhalten: The remote server returned an error: (404) Not Found.
+            $ErrorMessage | Should -Match '(404)'
+         }
+
+         # Kein Zip-File name
+         $DownloadedZipFileName | Should -Be $Null
+      }
+
+      It -Name '#53d -GitHubOwnerName mit ungültigem $GitHubBranchName' {
+         $GitHubOwnerName = 'rtCamp'
+         $GitHubRepoName = 'login-with-google'
+         $GitHubBranchName = '221116102811'
+
+         # Download starten
+         Try {
+            # Download starten
+            $DownloadedZipFileName = & $InstallModuleGitHub_ps1 -GitHubOwnerName $GitHubOwnerName `
+               -GitHubRepoName $GitHubRepoName -GitHubBranchName $GitHubBranchName `
+               -PesterTestGithubDownloadOnly
+         }
+         Catch {
+            # $MessageId = ('{0:x}' -f $_.Exception.HResult).Trim([char]0)
+            $ErrorMessage = ($_.Exception.Message).Trim([char]0) # The network path was not found.
+            # Wir erhalten: The remote server returned an error: (404) Not Found.
+            $ErrorMessage | Should -Match '(404)'
+         }
+
+         # Kein Zip-File name
+         $DownloadedZipFileName | Should -Be $Null
+      }
+
+
+      ## -GitHubOwnerName mit RepoName & Tag
+      It -Name '#54a -GitHubOwnerName mit RepoName & Tag' {
+         $GitHubOwnerName = 'rtCamp'
+         $GitHubRepoName = 'login-with-google'
+         $GitHubTag = '1.3.1'
+
+         # Download starten
+         $DownloadedZipFileName = & $InstallModuleGitHub_ps1 -GitHubOwnerName $GitHubOwnerName `
+            -GitHubRepoName $GitHubRepoName -GitHubTag $GitHubTag `
+            -PesterTestGithubDownloadOnly
+
+         # Zip-File muss existieren
+         Test-Path -LiteralPath $DownloadedZipFileName | Should -Be $True
+
+         # File löschen
+         Remove-Item -Force -EA SilentlyContinue -LiteralPath $DownloadedZipFileName
+      }
+
+      It -Name '#54b -GitHubOwnerName mit ungültigem $GitHubTag' {
+         $GitHubOwnerName = 'rtCamp'
+         $GitHubRepoName = 'login-with-google'
+         $GitHubTag = '221116103050'
+
+         # Download starten
+         Try {
+            # Download starten
+            $DownloadedZipFileName = & $InstallModuleGitHub_ps1 -GitHubOwnerName $GitHubOwnerName `
+               -GitHubRepoName $GitHubRepoName -GitHubTag $GitHubTag `
+               -PesterTestGithubDownloadOnly
+         }
+         Catch {
+            # $MessageId = ('{0:x}' -f $_.Exception.HResult).Trim([char]0)
+            $ErrorMessage = ($_.Exception.Message).Trim([char]0) # The network path was not found.
+            # Wir erhalten: The remote server returned an error: (404) Not Found.
+            $ErrorMessage | Should -Match '(404)'
+         }
+
+         # Kein Zip-File name
+         $DownloadedZipFileName | Should -Be $Null
+      }
+
+
+      AfterEach {
+         # Nach jedem einzelnen Test...
+      }
+
+   }
+
 }
 
 

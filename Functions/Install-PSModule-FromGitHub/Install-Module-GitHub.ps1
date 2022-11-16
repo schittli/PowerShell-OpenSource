@@ -31,74 +31,241 @@
 [CmdletBinding(DefaultParameterSetName = 'InstallGitHubUrlProposedScope')]
 Param(
 
+   ## InstallGitHubUrl…
    [Parameter(Mandatory, ParameterSetName = 'InstallGitHubUrlProposedScope')]
    [Parameter(Mandatory, ParameterSetName = 'InstallGitHubUrlEnforceScope')]
-   [Parameter(Mandatory, ParameterSetName = 'InstallGitHubUrlUpgradeUnly')]
-   # Die URL, von wo wir das Repo herunterladen
-   [String]$GitHubUrl,
+   [Parameter(Mandatory, ParameterSetName = 'InstallGitHubUrlUpgradeOnly')]
 
+   ## PesterTestGithubDownloadOnly
+   [Parameter(ParameterSetName = 'PesterTestGithubDownloadOnly')]
+   # Die URL, von wo wir das Repo herunterladen
+   # E.g.:
+   #   https://github.com/rtCamp/login-with-google
+   #   https://github.com/rtCamp/login-with-google/tree/develop
+   #   https://github.com/rtCamp/login-with-google/releases/tag/1.3.1
+   [String]$GitHubRepoUrl,
+
+   ## InstallGitHubZip…
+   [Parameter(Mandatory, ParameterSetName = 'InstallGitHubZipProposedScope')]
+   [Parameter(Mandatory, ParameterSetName = 'InstallGitHubZipEnforceScope')]
+   [Parameter(Mandatory, ParameterSetName = 'InstallGitHubZipUpgradeOnly')]
+
+   ## PesterTestGithubDownloadOnly
+   [Parameter(ParameterSetName = 'PesterTestGithubDownloadOnly')]
+   # Die URL zum Zip
+   [String]$GitHubZipUrl,
+
+
+   ## GitHubItemsBranch…
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsBranchProposedScope')]
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsBranchEnforceScope')]
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsBranchUpgradeOnly')]
+
+   ## GitHubItemsTag…
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsTagProposedScope')]
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsTagEnforceScope')]
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsTagUpgradeOnly')]
+
+   ## PesterTestGithubDownloadOnly
+   [Parameter(ParameterSetName = 'PesterTestGithubDownloadOnly')]
+   # Der Name des GitHub Owners
+   [String]$GitHubOwnerName,
+
+
+   ## GitHubItemsBranch…
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsBranchProposedScope')]
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsBranchEnforceScope')]
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsBranchUpgradeOnly')]
+
+   ## GitHubItemsTag…
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsTagProposedScope')]
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsTagEnforceScope')]
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsTagUpgradeOnly')]
+
+   ## PesterTestGithubDownloadOnly
+   [Parameter(ParameterSetName = 'PesterTestGithubDownloadOnly')]
+   # Der Name des GitHub Owners
+   [String]$GitHubRepoName,
+
+
+   ## GitHubItemsBranch…
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsBranchProposedScope')]
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsBranchEnforceScope')]
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsBranchUpgradeOnly')]
+
+   ## GitHubItemsTag…
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsTagProposedScope')]
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsTagEnforceScope')]
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsTagUpgradeOnly')]
+
+   ## PesterTestGithubDownloadOnly
+   [Parameter(ParameterSetName = 'PesterTestGithubDownloadOnly')]
+   # Der Name des GitHub Owners
+   [String]$GitHubBranchName,
+
+
+   ## GitHubItemsTag…
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsTagProposedScope')]
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsTagEnforceScope')]
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsTagUpgradeOnly')]
+
+   ## PesterTestGithubDownloadOnly
+   [Parameter(ParameterSetName = 'PesterTestGithubDownloadOnly')]
+   # Der Name des GitHub Owners
+   [String]$GitHubTag,
+
+
+   ## InstallRepositoryZipFile…
    [Parameter(Mandatory, ParameterSetName = 'InstallRepositoryZipFileProposedScope')]
    [Parameter(Mandatory, ParameterSetName = 'InstallRepositoryZipFileEnforceScope')]
-   [Parameter(Mandatory, ParameterSetName = 'InstallRepositoryZipFileUpgradeUnly')]
+   [Parameter(Mandatory, ParameterSetName = 'InstallRepositoryZipFileUpgradeOnly')]
    # Das Zip, das wir installieren
-   [String]$RepositoryZipFile,
+   [String]$RepositoryZipFileName,
 
+   ## Mix der verschiedenen ParameterSets
    [Parameter(Mandatory, ParameterSetName = 'InstallGitHubUrlProposedScope')]
+   [Parameter(Mandatory, ParameterSetName = 'InstallGitHubZipProposedScope')]
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsBranchProposedScope')]
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsTagProposedScope')]
    [Parameter(Mandatory, ParameterSetName = 'InstallRepositoryZipFileProposedScope')]
    # Wenn das Modul noch nicht installiert ist, dann wird dieser Scope genützt
    [ValidateSet(IgnoreCase, 'AllUsers', 'CurrentUser')]
    [Alias('DefaultScope')]
    [AllowEmptyString()][String]$ProposedDefaultScope,
 
+   ## Mix der verschiedenen ParameterSets
    [Parameter(Mandatory, ParameterSetName = 'InstallGitHubUrlEnforceScope')]
+   [Parameter(Mandatory, ParameterSetName = 'InstallGitHubZipEnforceScope')]
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsBranchEnforceScope')]
+   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsTagEnforceScope')]
+
    [Parameter(Mandatory, ParameterSetName = 'InstallRepositoryZipFileEnforceScope')]
    # Das Modul wird zwingend in diesem Scope installiert, auch wenn es schon anderso installiert ist
    [ValidateSet(IgnoreCase, 'AllUsers', 'CurrentUser')]
    [AllowEmptyString()][String]$EnforceScope,
 
-   [Parameter(ParameterSetName = 'InstallGitHubUrlUpgradeUnly')]
+   ## InstallGitHubUrl…
+   [Parameter(ParameterSetName = 'InstallGitHubUrlUpgradeOnly')]
    [Parameter(ParameterSetName = 'InstallGitHubUrlProposedScope')]
    [Parameter(ParameterSetName = 'InstallGitHubUrlEnforceScope')]
-   [Parameter(ParameterSetName = 'InstallRepositoryZipFileUpgradeUnly')]
+
+   ## InstallGitHubZip…
+   [Parameter(ParameterSetName = 'InstallGitHubZipUpgradeOnly')]
+   [Parameter(ParameterSetName = 'InstallGitHubZipProposedScope')]
+   [Parameter(ParameterSetName = 'InstallGitHubZipEnforceScope')]
+
+   ## GitHubItemsBranch…
+   [Parameter(ParameterSetName = 'GitHubItemsBranchUpgradeOnly')]
+   [Parameter(ParameterSetName = 'GitHubItemsBranchProposedScope')]
+   [Parameter(ParameterSetName = 'GitHubItemsBranchEnforceScope')]
+
+   ## GitHubItemsTag…
+   [Parameter(ParameterSetName = 'GitHubItemsTagUpgradeOnly')]
+   [Parameter(ParameterSetName = 'GitHubItemsTagProposedScope')]
+   [Parameter(ParameterSetName = 'GitHubItemsTagEnforceScope')]
+
+   ## InstallRepositoryZipFile…
+   [Parameter(ParameterSetName = 'InstallRepositoryZipFileUpgradeOnly')]
    [Parameter(ParameterSetName = 'InstallRepositoryZipFileProposedScope')]
    [Parameter(ParameterSetName = 'InstallRepositoryZipFileEnforceScope')]
    # Wenn das Modul schon installiert ist, wird es in diesem Scope aktualisiert
    [Switch]$UpgradeInstalledModule,
 
-   [Parameter(ParameterSetName = 'InstallGitHubUrlUpgradeUnly')]
+
+   ## InstallGitHubUrl…
+   [Parameter(ParameterSetName = 'InstallGitHubUrlUpgradeOnly')]
    [Parameter(ParameterSetName = 'InstallGitHubUrlProposedScope')]
    [Parameter(ParameterSetName = 'InstallGitHubUrlEnforceScope')]
-   [Parameter(ParameterSetName = 'InstallRepositoryZipFileUpgradeUnly')]
+
+   ## InstallGitHubZip…
+   [Parameter(ParameterSetName = 'InstallGitHubZipUpgradeOnly')]
+   [Parameter(ParameterSetName = 'InstallGitHubZipProposedScope')]
+   [Parameter(ParameterSetName = 'InstallGitHubZipEnforceScope')]
+
+   ## GitHubItemsBranch…
+   [Parameter(ParameterSetName = 'GitHubItemsBranchUpgradeOnly')]
+   [Parameter(ParameterSetName = 'GitHubItemsBranchProposedScope')]
+   [Parameter(ParameterSetName = 'GitHubItemsBranchEnforceScope')]
+
+   ## GitHubItemsTag…
+   [Parameter(ParameterSetName = 'GitHubItemsTagUpgradeOnly')]
+   [Parameter(ParameterSetName = 'GitHubItemsTagProposedScope')]
+   [Parameter(ParameterSetName = 'GitHubItemsTagEnforceScope')]
+
+   ## InstallRepositoryZipFile…
+   [Parameter(ParameterSetName = 'InstallRepositoryZipFileUpgradeOnly')]
    [Parameter(ParameterSetName = 'InstallRepositoryZipFileProposedScope')]
    [Parameter(ParameterSetName = 'InstallRepositoryZipFileEnforceScope')]
    # Installiere alle Module vom heruntergeladenen GitHub Repo
    [Switch]$InstallAllModules,
 
-   [Parameter(ParameterSetName = 'InstallGitHubUrlUpgradeUnly')]
+   ## InstallGitHubUrl…
+   [Parameter(ParameterSetName = 'InstallGitHubUrlUpgradeOnly')]
    [Parameter(ParameterSetName = 'InstallGitHubUrlProposedScope')]
    [Parameter(ParameterSetName = 'InstallGitHubUrlEnforceScope')]
-   [Parameter(ParameterSetName = 'InstallRepositoryZipFileUpgradeUnly')]
+
+   ## InstallGitHubZip…
+   [Parameter(ParameterSetName = 'InstallGitHubZipUpgradeOnly')]
+   [Parameter(ParameterSetName = 'InstallGitHubZipProposedScope')]
+   [Parameter(ParameterSetName = 'InstallGitHubZipEnforceScope')]
+
+   ## GitHubItemsBranch…
+   [Parameter(ParameterSetName = 'GitHubItemsBranchUpgradeOnly')]
+   [Parameter(ParameterSetName = 'GitHubItemsBranchProposedScope')]
+   [Parameter(ParameterSetName = 'GitHubItemsBranchEnforceScope')]
+
+   ## GitHubItemsTag…
+   [Parameter(ParameterSetName = 'GitHubItemsTagUpgradeOnly')]
+   [Parameter(ParameterSetName = 'GitHubItemsTagProposedScope')]
+   [Parameter(ParameterSetName = 'GitHubItemsTagEnforceScope')]
+
+   ## InstallRepositoryZipFile…
+   [Parameter(ParameterSetName = 'InstallRepositoryZipFileUpgradeOnly')]
    [Parameter(ParameterSetName = 'InstallRepositoryZipFileProposedScope')]
    [Parameter(ParameterSetName = 'InstallRepositoryZipFileEnforceScope')]
    # Liste der Modulnamen, die installiert werden sollen
    [String[]]$InstallModuleNames,
 
-   [Parameter(ParameterSetName = 'InstallGitHubUrlUpgradeUnly')]
+
+   ## InstallGitHubUrl…
+   [Parameter(ParameterSetName = 'InstallGitHubUrlUpgradeOnly')]
    [Parameter(ParameterSetName = 'InstallGitHubUrlProposedScope')]
    [Parameter(ParameterSetName = 'InstallGitHubUrlEnforceScope')]
-   [Parameter(ParameterSetName = 'InstallRepositoryZipFileUpgradeUnly')]
+
+   ## InstallGitHubZip…
+   [Parameter(ParameterSetName = 'InstallGitHubZipUpgradeOnly')]
+   [Parameter(ParameterSetName = 'InstallGitHubZipProposedScope')]
+   [Parameter(ParameterSetName = 'InstallGitHubZipEnforceScope')]
+
+   ## GitHubItemsBranch…
+   [Parameter(ParameterSetName = 'GitHubItemsBranchUpgradeOnly')]
+   [Parameter(ParameterSetName = 'GitHubItemsBranchProposedScope')]
+   [Parameter(ParameterSetName = 'GitHubItemsBranchEnforceScope')]
+
+   ## GitHubItemsTag…
+   [Parameter(ParameterSetName = 'GitHubItemsTagUpgradeOnly')]
+   [Parameter(ParameterSetName = 'GitHubItemsTagProposedScope')]
+   [Parameter(ParameterSetName = 'GitHubItemsTagEnforceScope')]
+
+   ## InstallRepositoryZip…
+   [Parameter(ParameterSetName = 'InstallRepositoryZipFileUpgradeOnly')]
    [Parameter(ParameterSetName = 'InstallRepositoryZipFileProposedScope')]
    [Parameter(ParameterSetName = 'InstallRepositoryZipFileEnforceScope')]
    # Ein bestehendes Modul wird zwingend aktualisiert
    [Switch]$Force,
 
-   [Parameter(ParameterSetName = 'Getter')]
+   [Parameter(ParameterSetName = 'PesterGetter')]
    # Liefert das berechnete AllUsers Modul Dir
    [Switch]$GetScopeAllUsers,
 
-   [Parameter(ParameterSetName = 'Getter')]
+   [Parameter(ParameterSetName = 'PesterGetter')]
    # Liefert das berechnete CurrentUser Modul Dir
-   [Switch]$GetScopeCurrentUser
+   [Switch]$GetScopeCurrentUser,
+
+   [Parameter(ParameterSetName = 'PesterTestGithubDownloadOnly')]
+   # Testet nur die Berechnung der Download-URL
+   # und den Doanlod der zip-Datei
+   [Switch]$PesterTestGithubDownloadOnly
 )
 
 
@@ -134,8 +301,170 @@ $AllUsersModulesDir = "$env:ProgramFiles\WindowsPowerShell\Modules"
 $CurrentUserModulesDir = "$home\Documents\WindowsPowerShell\Modules"
 
 
+## Funktion: Nur Scopes zurückgeben
 If ($GetScopeAllUsers) { Return $AllUsersModulesDir }
 If ($GetScopeCurrentUser) { Return $CurrentUserModulesDir }
+
+
+
+
+#Region GitHub
+
+
+Function Resolve-GitHub-ZipRepoUri {
+<#
+.SYNOPSIS
+   Resolves the correct GitHub URI for the specified Owner, Repository and Branch.
+#>
+   [CmdletBinding()]
+   [OutputType([System.Uri])]
+   Param (
+      [Parameter(Mandatory, ValueFromPipelineByPropertyName)]
+      [System.String] $OwnerName,
+
+      [Parameter(Mandatory, ValueFromPipelineByPropertyName)]
+      [System.String] $RepoName,
+
+      [Parameter(ValueFromPipelineByPropertyName)] [ValidateNotNullOrEmpty()]
+      [System.String] $BranchName = 'master',
+
+      [Parameter(ValueFromPipelineByPropertyName)] [ValidateNotNullOrEmpty()]
+      # eg: 1.3.1
+      [System.String] $Tag
+   )
+
+   Process {
+      If ([String]::IsNullOrWhiteSpace($Tag)) {
+         [URI]('https://github.com/{0}/{1}/archive/{2}.zip' -f $OwnerName, $RepoName, $BranchName)
+      } Else {
+         [URI]('https://github.com/{0}/{1}/archive/{2}.zip' -f $OwnerName, $RepoName, $Tag)
+      }
+   }
+}
+
+
+# Lädt eine Datei herunter und 'unlocked' sie
+Function Download-File-FromUri {
+   [CmdletBinding()]
+   Param (
+      [Parameter(Mandatory, ValueFromPipelineByPropertyName)]
+      [URI]$DownloadUrl,
+
+      [Parameter(ValueFromPipelineByPropertyName)] [ValidateNotNullOrEmpty()]
+      [String]$DestinationDir,
+
+      [Parameter(ValueFromPipelineByPropertyName)] [ValidateNotNullOrEmpty()]
+      [String]$DestinationFilename,
+
+      [Parameter(ValueFromPipelineByPropertyName, ParameterSetName = 'Force')]
+      # Stoppt das Script bei einem Fehler
+      [Switch] $BreakScriptOnDownloadError,
+
+      [Parameter(ValueFromPipelineByPropertyName, ParameterSetName = 'Force')]
+      [Switch] $Force
+   )
+
+   Process {
+      ## Fehler prüfen
+      # Fehlende $DownloadUrl
+      If ($null -eq $DownloadUrl) {
+         Write-Error 'Download-File-FromUri(): Leere -DownloadUrl erhalten'
+         Break Script
+      }
+
+      # $DestinationDir ist eine Datei
+      If (Test-Path -LiteralPath $DestinationDir -PathType Leaf) {
+         Write-Error 'Download-File-FromUri(): -DestinationDir muss ein Verzeichnis sein!'
+         Break Script
+      }
+
+      # $DestinationDir fehlt: erzeugen
+      If (-not (Test-Path -LiteralPath $DestinationDir)) {
+         $Null = New-Item -Path $DestinationDir -ItemType Directory -Force
+      }
+
+      ## Prepare
+      # Den Downloaded Dateinamen berechnen
+      $DownloadedFileName = Join-Path $DestinationDir $DestinationFilename
+
+      # Wenn die Downloaded Datei schon existiert
+      If (Test-Path -LiteralPath $DownloadedFileName) {
+         If ($Force) {
+            Remove-Item -LiteralPath $DownloadedFileName -Force
+         }
+         Else {
+            Return $DownloadedFileName
+         }
+      }
+
+      ## Download File
+      $Res = Invoke-WebRequest -Uri $DownloadUrl.AbsoluteUri -OutFile $DownloadedFileName -PassThru
+   	Switch ($Res.StatusCode) {
+	   	200 {
+			   # OK
+		   }
+		   Default {
+            Write-Host ('Fehler Download von: {0}' -f $DownloadUrl) -ForegroundColor Yellow
+            Write-Host ('> {0}: {1}' -f $Res.StatusCode, $Res.StatusDescription) -ForegroundColor Red
+            If ($BreakScriptOnDownloadError) { break Script }
+			   Return $Null
+	   	}
+      }
+
+      Unblock-File -LiteralPath $DownloadedFileName
+      Return $DownloadedFileName
+   }
+}
+
+
+Function Download-GitHub-Repo {
+<#
+.SYNOPSIS
+   Downloads zip repo from GitHub
+.DESCRIPTION
+   Downloads zip repo from GitHub
+.PARAMETER Owner
+   Specifies the owner of the GitHub repository from whom to download the module.
+.PARAMETER Repository
+   Specifies the GitHub repository name to download.
+.PARAMETER Branch
+   Default: Master
+   Specifies the specific Git repository branch to download.
+.PARAMETER DestinationPath
+   Specifies the path to the folder in which you want the command to save GitHub repository. Enter the path to a folder, but do not specify a file name or file name extension. If this parameter is not specified, it defaults to the '$env:ProgramFiles\WindowsPowershell\Modules' directory.
+.PARAMETER OverrideRepository
+   Specifies overriding the repository name when it's expanded to disk. Use this parameter when the extracted Zip file path does not meet your requirements, i.e. when the repository name does not match the Powershell module name.
+.PARAMETER Force
+   Forces downloading Repo zip File
+#>
+   [CmdletBinding()]
+   Param (
+      [Parameter(Mandatory, ValueFromPipelineByPropertyName)]
+      [String]$Owner,
+
+      [Parameter(Mandatory, ValueFromPipelineByPropertyName)]
+      [String]$Repository,
+
+      [Parameter(ValueFromPipelineByPropertyName)] [ValidateNotNullOrEmpty()]
+      [String]$Branch = 'master',
+
+      [Parameter(ValueFromPipelineByPropertyName)] [ValidateNotNullOrEmpty()]
+      [String]$DestinationDir,
+
+      [Parameter(ValueFromPipelineByPropertyName, ParameterSetName = 'Force')]
+      [Switch]$Force
+   )
+
+   Process {
+      $Uri = Resolve-GitHub-ZipRepoUri -Owner $Owner -Repository $Repository -Branch $Branch
+      Download-File-FromUri -DownloadUrl $Uri -DestinationDir $DestinationDir -DestinationFilename 'GitHubRepo.zip' `
+                              -Force:$Force -BreakScriptOnDownloadError
+   }
+}
+
+
+#EndRegion GitHub
+
 
 
 # Extrahiert ein Zip-File in ein Ziel-Dir
@@ -1213,12 +1542,85 @@ Function Get-TempDir() {
 }
 
 
+# Erzeugt aus diesen URL-Typen die Download-URL für das Repository zip File:
+#   https://github.com/rtCamp/login-with-google
+#   https://github.com/rtCamp/login-with-google/tree/develop
+#   https://github.com/rtCamp/login-with-google/releases/tag/1.3.1
+#
+Function Get-GitHubUrl-RepoZipUri($GitHubUrl) {
+   $UriSegments = [URI]$GitHubUrl | select -ExpandProperty Segments | % { $_.Trim('/') }
+   Switch ($UriSegments.Count) {
+      3 {
+         #   https://github.com/rtCamp/login-with-google
+         # > https://github.com/rtCamp/login-with-google/archive/master.zip
+         [URI]('https://github.com/{0}/{1}/archive/master.zip' -f $UriSegments[1], $UriSegments[2])
+      }
+      5 {
+         #   https://github.com/rtCamp/login-with-google/tree/develop
+         # > https://github.com/rtCamp/login-with-google/archive/develop.zip
+         [URI]('https://github.com/{0}/{1}/archive/{2}.zip' -f $UriSegments[1], $UriSegments[2], $UriSegments[4])
+      }
+      6 {
+         #   https://github.com/rtCamp/login-with-google/releases/tag/1.3.1
+         # > https://github.com/rtCamp/login-with-google/archive/1.3.1.zip
+         [URI]('https://github.com/{0}/{1}/archive/{2}.zip' -f $UriSegments[1], $UriSegments[2], $UriSegments[5])
+      }
+   }
+}
+
+
 
 ### Prepare
 Add-Type -AssemblyName 'System.IO.Compression';
 Add-Type -AssemblyName 'System.IO.Compression.FileSystem';
 
+# Erzeuge ein temporäre Verzeichnis
 $TempDir = Get-TempDir
+
+### Haben wir eine Repository-URL erhalten?
+If ([String]::IsNullOrWhiteSpace($GitHubRepoUrl) -eq $False) {
+   ## Wir haben erhalten: $GitHubRepoUrl
+   # Versuchen, die DL Zip URL herauszufinden
+   $RepoZipUri = Get-GitHubUrl-RepoZipUri $GitHubRepoUrl
+   # Download starten
+   $RepositoryZipFileName = Download-File-FromUri -DownloadUrl $RepoZipUri `
+                                 -DestinationDir $TempDir -DestinationFilename 'GitHubRepo.zip' `
+                                 -Force:$Force -BreakScriptOnDownloadError
+
+} ElseIf ([String]::IsNullOrWhiteSpace($GitHubZipUrl) -eq $False) {
+   ## Wir haben erhalten: $GitHubZipUrl
+   # Download starten
+   $RepositoryZipFileName = Download-File-FromUri -DownloadUrl $GitHubZipUrl `
+                                 -DestinationDir $TempDir -DestinationFilename 'GitHubRepo.zip' `
+                                 -Force:$Force -BreakScriptOnDownloadError
+
+} ElseIf ([String]::IsNullOrWhiteSpace($GitHubOwnerName) -eq $False) {
+   ## Wir haben erhalten: $GitHubOwnerName
+
+   # Versuchen, die DL Zip URL herauszufinden
+   If ([String]::IsNullOrWhiteSpace($GitHubBranchName) -eq $False) {
+      ## $GitHubOwnerName mit einem $GitHubBranchName
+      $RepoZipUri = Resolve-GitHub-ZipRepoUri -OwnerName $GitHubOwnerName `
+                                  -RepoName $GitHubRepoName `
+                                  -BranchName $GitHubBranchName
+   } Else {
+      ## $GitHubOwnerName mit einem $GitHubTag
+      $RepoZipUri = Resolve-GitHub-ZipRepoUri -OwnerName $GitHubOwnerName `
+                                   -RepoName $GitHubRepoName `
+                                   -Tag $GitHubTag
+   }
+   ## Download starten
+   $RepositoryZipFileName = Download-File-FromUri -DownloadUrl $RepoZipUri `
+                                    -DestinationDir $TempDir `
+                                    -DestinationFilename 'GitHubRepo.zip' `
+                                    -Force:$Force -BreakScriptOnDownloadError
+}
+
+
+## Wenn Pester nur den Download testet, dann sind wir fertig
+If ($PesterTestGithubDownloadOnly) {
+   Return $RepositoryZipFileName
+}
 
 
 ## Die Liste der zu installierenden Module in Objekte konvertieren
@@ -1244,8 +1646,14 @@ $UsersModules = $AllInstalledModules | ? { @([eModuleScope]::AllUsers, [eModuleS
 
 Try {
 
+   ## Ist die zip Datei vorhanden?
+   If (-not(Test-Path -LiteralPath $RepositoryZipFileName -PathType Leaf)) {
+      Write-Host ('Zip-Datei nicht gefunden: {0}' -f $RepositoryZipFileName) -ForegroundColor Red
+      Break Script
+   }
+
    ## Zip extrahieren
-   Extract-Zip -ZipFile $RepositoryZipFile -ZielDir $TempDir
+   Extract-Zip -ZipFile $RepositoryZipFileName -ZielDir $TempDir
 
    ## im entpackten Zip PS Module suchen
    $FoundGitHubModules = Find-PSD1-InDir -Dir $TempDir
