@@ -12,7 +12,7 @@
 #
 #
 #  ToDo
-#  🟩 Neuer Parameter: GitHub URL
+#  🟩 Neuer Parameter: GitHubUrl
 #
 # ✅
 # 🟩
@@ -28,34 +28,67 @@
 
 # -InstallZip 'c:\Scripts\PowerShell\Install-Module-GitHub\!Q GitHubRepository\GitHubRepository-master.zip'
 
-[CmdletBinding(DefaultParameterSetName = 'ProposeDefaultScope')]
+[CmdletBinding(DefaultParameterSetName = 'InstallGitHubUrlProposedScope')]
 Param(
 
-   [String]$InstallZip,
+   [Parameter(Mandatory, ParameterSetName = 'InstallGitHubUrlProposedScope')]
+   [Parameter(Mandatory, ParameterSetName = 'InstallGitHubUrlEnforceScope')]
+   [Parameter(Mandatory, ParameterSetName = 'InstallGitHubUrlUpgradeUnly')]
+   # Die URL, von wo wir das Repo herunterladen
+   [String]$GitHubUrl,
 
-   [Parameter(ParameterSetName = 'ProposeDefaultScope')]
+   [Parameter(Mandatory, ParameterSetName = 'InstallRepositoryZipFileProposedScope')]
+   [Parameter(Mandatory, ParameterSetName = 'InstallRepositoryZipFileEnforceScope')]
+   [Parameter(Mandatory, ParameterSetName = 'InstallRepositoryZipFileUpgradeUnly')]
+   # Das Zip, das wir installieren
+   [String]$RepositoryZipFile,
+
+   [Parameter(Mandatory, ParameterSetName = 'InstallGitHubUrlProposedScope')]
+   [Parameter(Mandatory, ParameterSetName = 'InstallRepositoryZipFileProposedScope')]
    # Wenn das Modul noch nicht installiert ist, dann wird dieser Scope genützt
    [ValidateSet(IgnoreCase, 'AllUsers', 'CurrentUser')]
    [Alias('DefaultScope')]
    [AllowEmptyString()][String]$ProposedDefaultScope,
 
-   [Parameter(ParameterSetName = 'EnforceScope')]
+   [Parameter(Mandatory, ParameterSetName = 'InstallGitHubUrlEnforceScope')]
+   [Parameter(Mandatory, ParameterSetName = 'InstallRepositoryZipFileEnforceScope')]
    # Das Modul wird zwingend in diesem Scope installiert, auch wenn es schon anderso installiert ist
    [ValidateSet(IgnoreCase, 'AllUsers', 'CurrentUser')]
    [AllowEmptyString()][String]$EnforceScope,
 
-   [Parameter(ParameterSetName = 'ProposeDefaultScope')]
-   [Parameter(ParameterSetName = 'EnforceScope')]
-   [Parameter(Mandatory, ParameterSetName = 'UpgradeInstalledModule')]
+   [Parameter(ParameterSetName = 'InstallGitHubUrlUpgradeUnly')]
+   [Parameter(ParameterSetName = 'InstallGitHubUrlProposedScope')]
+   [Parameter(ParameterSetName = 'InstallGitHubUrlEnforceScope')]
+   [Parameter(ParameterSetName = 'InstallRepositoryZipFileUpgradeUnly')]
+   [Parameter(ParameterSetName = 'InstallRepositoryZipFileProposedScope')]
+   [Parameter(ParameterSetName = 'InstallRepositoryZipFileEnforceScope')]
    # Wenn das Modul schon installiert ist, wird es in diesem Scope aktualisiert
    [Switch]$UpgradeInstalledModule,
 
+   [Parameter(ParameterSetName = 'InstallGitHubUrlUpgradeUnly')]
+   [Parameter(ParameterSetName = 'InstallGitHubUrlProposedScope')]
+   [Parameter(ParameterSetName = 'InstallGitHubUrlEnforceScope')]
+   [Parameter(ParameterSetName = 'InstallRepositoryZipFileUpgradeUnly')]
+   [Parameter(ParameterSetName = 'InstallRepositoryZipFileProposedScope')]
+   [Parameter(ParameterSetName = 'InstallRepositoryZipFileEnforceScope')]
    # Installiere alle Module vom heruntergeladenen GitHub Repo
    [Switch]$InstallAllModules,
 
+   [Parameter(ParameterSetName = 'InstallGitHubUrlUpgradeUnly')]
+   [Parameter(ParameterSetName = 'InstallGitHubUrlProposedScope')]
+   [Parameter(ParameterSetName = 'InstallGitHubUrlEnforceScope')]
+   [Parameter(ParameterSetName = 'InstallRepositoryZipFileUpgradeUnly')]
+   [Parameter(ParameterSetName = 'InstallRepositoryZipFileProposedScope')]
+   [Parameter(ParameterSetName = 'InstallRepositoryZipFileEnforceScope')]
    # Liste der Modulnamen, die installiert werden sollen
    [String[]]$InstallModuleNames,
 
+   [Parameter(ParameterSetName = 'InstallGitHubUrlUpgradeUnly')]
+   [Parameter(ParameterSetName = 'InstallGitHubUrlProposedScope')]
+   [Parameter(ParameterSetName = 'InstallGitHubUrlEnforceScope')]
+   [Parameter(ParameterSetName = 'InstallRepositoryZipFileUpgradeUnly')]
+   [Parameter(ParameterSetName = 'InstallRepositoryZipFileProposedScope')]
+   [Parameter(ParameterSetName = 'InstallRepositoryZipFileEnforceScope')]
    # Ein bestehendes Modul wird zwingend aktualisiert
    [Switch]$Force,
 
@@ -318,7 +351,8 @@ Function Compare-Version() {
    }
 }
 
-# Substring, kommt mit Fehlern klar
+
+# Substring-Funktion, die mit Argumen-Fehlern klarkommt
 # Debugged: OK
 Function SubString() {
    [CmdletBinding()]
@@ -337,7 +371,7 @@ Function SubString() {
 }
 
 
-# Join-Path, kommt mit Fehlern klar
+# Join-Path-Funktion, die mit Argumen-Fehlern klarkommt
 # Debugged: OK
 Function Join-Path() {
    [CmdletBinding()]
@@ -1211,7 +1245,7 @@ $UsersModules = $AllInstalledModules | ? { @([eModuleScope]::AllUsers, [eModuleS
 Try {
 
    ## Zip extrahieren
-   Extract-Zip -ZipFile $InstallZip -ZielDir $TempDir
+   Extract-Zip -ZipFile $RepositoryZipFile -ZielDir $TempDir
 
    ## im entpackten Zip PS Module suchen
    $FoundGitHubModules = Find-PSD1-InDir -Dir $TempDir
