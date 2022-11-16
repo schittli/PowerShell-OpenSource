@@ -1,9 +1,0 @@
-
-# Packages #
-# Alle Verzeichnisse erlauben
-!*/
-# .git erlauben
-!.git/
-
-
-
