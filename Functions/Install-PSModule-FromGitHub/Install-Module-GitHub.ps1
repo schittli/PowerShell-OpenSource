@@ -265,7 +265,11 @@ Param(
    [Parameter(ParameterSetName = 'PesterTestGithubDownloadOnly')]
    # Testet nur die Berechnung der Download-URL
    # und den Doanlod der zip-Datei
-   [Switch]$PesterTestGithubDownloadOnly
+   [Switch]$PesterTestGithubDownloadOnly,
+
+   # Wird zZ genützt, damit das Dummy-PS-Module testweise installiert wurd
+   # Sonst wird das Dummy-PS-Module nicht installiert
+   [Switch]$PesterIsActive
 )
 
 
@@ -308,8 +312,145 @@ If ($GetScopeCurrentUser) { Return $CurrentUserModulesDir }
 
 
 
-#Region GitHub
+#Region Toms Tools: Log
 
+# Log
+# Prüft, ob $Script:LogColors definiert ist und nützt dann dieses zur Farbgebung
+# $Script:LogColors =@('Cyan', 'Yellow')
+#
+# !Ex
+# 	Log 1 'Test1' -NoNewline; Log 1 'Test2' -Append
+# 	Log 1 'Test1' -NoNewline; Log -Message 'Test2' -Append
+#
+#
+# 0: Thema - 1: Kapitel - 2: OK - 3: Error
+# 200604 175016
+# 200805 103305
+# 	Neu: Optional BackgroundColor
+# 211129 110213
+# 	Fix -ClrToEol zusammen mit -ReplaceLine
+# 220102 172537
+# 	Fix Für PS7: Kommt irgendwie nicht mit NoNewLine zurecht
+# 220118 095129
+# 	ValueFromPipeline richtig angewendet
+$Script:LogColors = @('Green', 'Yellow', 'Cyan', 'White', 'Red')
+Function Log() {
+   Param (
+      [Parameter(Position = 0)][Int]$Indent,
+      [Parameter(Position = 1, ValueFromPipeline, ValueFromPipelineByPropertyName)][String]$Message = '',
+      [Parameter(Position = 2)][ConsoleColor]$ForegroundColor,
+      # Vor der Nachricht eine Leerzeile
+      [Parameter(Position = 3)][Switch]$NewLineBefore,
+      # True: Die aktuelle Zeile wird gelöscht und neu geschrieben
+      [Parameter(Position = 4)][Switch]$ReplaceLine = $false,
+      # True: Am Ende keinen Zeilenumbruch
+      [Parameter(Position = 5)][Switch]$NoNewline = $false,
+      # Append, also kein Präfix mit Ident
+      [Parameter(Position = 6)][Switch]$Append = $false,
+      # Löscht die Zeile bis zum Zeilenende
+      [Parameter(Position = 7)][Switch]$ClrToEol = $false,
+      [Parameter(Position = 8)][ConsoleColor]$BackgroundColor
+   )
+
+   Begin {
+      If ($Script:LogDisabled -eq $true) { Return }
+      # Fix für PS7
+      If ($null -eq $Script:IsPS7) { $Script:IsPS7 = ($PSVersionTable).PSVersion.Major -eq 7 }
+      If ($null -eq $Script:DefaultBackgroundColor) { $Script:DefaultBackgroundColor = (Get-Host).UI.RawUI.BackgroundColor }
+      If ([String]::IsNullOrEmpty($Message)) { $Message = '' }
+
+      If ($Indent -eq $null) { $Indent = 0 }
+      If ($BackgroundColor -eq $null) { $BackgroundColor = $Script:DefaultBackgroundColor }
+
+      If ($ReplaceLine) { $Message = "`r$Message" }
+
+      If ($NewLineBefore) { Write-Host '' }
+
+      $WriteHostArgs = @{ }
+      If ($ForegroundColor -eq $null) {
+         If ($null -ne $Script:LogColors -and $Indent -le $Script:LogColors.Count -and $null -ne $Script:LogColors[$Indent]) {
+            Try {
+               $ForegroundColor = $Script:LogColors[$Indent]
+            }
+            Catch {
+               Write-Host "Ungültige Farbe: $($Script:LogColors[$Indent])" -ForegroundColor Red
+            }
+         }
+         If ($null -eq $ForegroundColor) {
+            $ForegroundColor = [ConsoleColor]::White
+         }
+      }
+      If ($ForegroundColor) {
+         $WriteHostArgs += @{ ForegroundColor = $ForegroundColor }
+      }
+      $WriteHostArgs += @{ BackgroundColor = $BackgroundColor }
+
+      If ($NoNewline) {
+         $WriteHostArgs += @{ NoNewline = $true }
+      }
+   }
+
+   Process {
+      If ($Append) {
+         $Msg = $Message
+         If ($ClrToEol) {
+            $Width = (get-host).UI.RawUI.MaxWindowSize.Width
+            If ($Msg.Length -lt $Width) {
+               $Spaces = $Width - $Msg.Length
+               $Msg = "$Msg$(' ' * $Spaces)"
+            }
+         }
+      }
+      Else {
+         Switch ($Indent) {
+            0 {
+               $Msg = "* $Message"
+               If ($NoNewline -and $ClrToEol) {
+                  $Width = (get-host).UI.RawUI.MaxWindowSize.Width
+                  If ($Msg.Length -lt $Width) {
+                     $Spaces = $Width - $Msg.Length
+                     $Msg = "$Msg$(' ' * $Spaces)"
+                  }
+               }
+               If (!($ReplaceLine)) {
+                  $Msg = "`n$Msg"
+               }
+            }
+            Default {
+               $Msg = $(' ' * ($Indent * 2) + $Message)
+               If ($NoNewline -and $ClrToEol) {
+                  # Rest der Zeile mit Leerzeichen überschreiben
+                  $Width = (get-host).UI.RawUI.MaxWindowSize.Width
+                  If ($Msg.Length -lt $Width) {
+                     $Spaces = $Width - $Msg.Length
+                     $Msg = "$Msg$(' ' * $Spaces)"
+                  }
+               }
+            }
+         }
+      }
+
+      Write-Host $Msg @WriteHostArgs
+      # Fix für PS7: Den Cursor ans Ende Positionieren
+      If ($Script:IsPS7 -and $NoNewline) {
+         $CursorPosition = (Get-Host).UI.RawUI.CursorPosition
+         $CursorPosition.X = $Msg.Length
+			(Get-Host).UI.RawUI.CursorPosition = $CursorPosition
+      }
+
+      # if (!([String]::IsNullOrEmpty($LogFile))) {
+      # 	"$([DateTime]::Now.ToShortDateString()) $([DateTime]::Now.ToLongTimeString())   $Message" | Out-File $LogFile -Append
+      # }
+   }
+
+
+}
+
+#Endregion Toms Tools: Log
+
+
+
+#Region GitHub
 
 Function Resolve-GitHub-ZipRepoUri {
 <#
@@ -1568,14 +1709,46 @@ Function Get-GitHubUrl-RepoZipUri($GitHubUrl) {
    }
 }
 
+# Liefert die Anzal Objekte, $null == 0
+Function Count($Obj) {
+   ($Obj | measure).Count
+}
+
 
 
 ### Prepare
 Add-Type -AssemblyName 'System.IO.Compression';
 Add-Type -AssemblyName 'System.IO.Compression.FileSystem';
 
+
+## Die Liste der Modul-Namen, die der User installiert haben möchte
+$oInstallModuleNames = Array-ToObj ($InstallModuleNames | ? { -not [String]::IsNullOrWhiteSpace($_) })
+# um zu erfassen, ob ein Modul in GitHub gefunden wurde
+$oInstallModuleNames | Add-Member -MemberType NoteProperty -Name FoundOnGitHub -Value $False
+
+
+## Wurde mind. 1 Parameter definiert, der eine Modulinstallation verlangt?
+If ($UpgradeInstalledModule -eq $False `
+   -and $InstallAllModules -eq $False `
+   -and ($oInstallModuleNames | Measure).Count -eq 0) {
+
+   Write-Host 'Fehler:' -ForegroundColor Red -NoNewline
+   Write-Host 'Mindestens einer dieser Parameter muss angegeben werden:'  -ForegroundColor Red
+   '-UpgradeInstalledModule','-InstallAllModules','-InstallModuleNames' | % {
+      Write-Host (' {0}' -f $_)
+   }
+   Write-Host 'Abbruch'  -ForegroundColor Red
+   Break Script
+}
+
+
+
 # Erzeuge ein temporäre Verzeichnis
-$TempDir = Get-TempDir
+$TempDirRoot = Get-TempDir
+$TempDirForZipFile = Join-Path $TempDirRoot 'ZipFile'
+$TempDirExtractedZip = Join-Path $TempDirRoot 'Extracted'
+
+
 
 ### Haben wir eine Repository-URL erhalten?
 If ([String]::IsNullOrWhiteSpace($GitHubRepoUrl) -eq $False) {
@@ -1584,14 +1757,14 @@ If ([String]::IsNullOrWhiteSpace($GitHubRepoUrl) -eq $False) {
    $RepoZipUri = Get-GitHubUrl-RepoZipUri $GitHubRepoUrl
    # Download starten
    $RepositoryZipFileName = Download-File-FromUri -DownloadUrl $RepoZipUri `
-                                 -DestinationDir $TempDir -DestinationFilename 'GitHubRepo.zip' `
+                                 -DestinationDir $TempDirForZipFile -DestinationFilename 'GitHubRepo.zip' `
                                  -Force:$Force -BreakScriptOnDownloadError
 
 } ElseIf ([String]::IsNullOrWhiteSpace($GitHubZipUrl) -eq $False) {
    ## Wir haben erhalten: $GitHubZipUrl
    # Download starten
    $RepositoryZipFileName = Download-File-FromUri -DownloadUrl $GitHubZipUrl `
-                                 -DestinationDir $TempDir -DestinationFilename 'GitHubRepo.zip' `
+                                 -DestinationDir $TempDirForZipFile -DestinationFilename 'GitHubRepo.zip' `
                                  -Force:$Force -BreakScriptOnDownloadError
 
 } ElseIf ([String]::IsNullOrWhiteSpace($GitHubOwnerName) -eq $False) {
@@ -1611,7 +1784,7 @@ If ([String]::IsNullOrWhiteSpace($GitHubRepoUrl) -eq $False) {
    }
    ## Download starten
    $RepositoryZipFileName = Download-File-FromUri -DownloadUrl $RepoZipUri `
-                                    -DestinationDir $TempDir `
+                                    -DestinationDir $TempDirForZipFile `
                                     -DestinationFilename 'GitHubRepo.zip' `
                                     -Force:$Force -BreakScriptOnDownloadError
 }
@@ -1622,11 +1795,6 @@ If ($PesterTestGithubDownloadOnly) {
    Return $RepositoryZipFileName
 }
 
-
-## Die Liste der zu installierenden Module in Objekte konvertieren
-$oInstallModuleNames = Array-ToObj $InstallModuleNames
-# um zu erfassen, ob ein Modul in GitHub gefunden wurde
-$oInstallModuleNames | Add-Member -MemberType NoteProperty -Name FoundOnGitHub -Value $False
 
 
 # !KH
@@ -1653,16 +1821,21 @@ Try {
    }
 
    ## Zip extrahieren
-   Extract-Zip -ZipFile $RepositoryZipFileName -ZielDir $TempDir
+   Extract-Zip -ZipFile $RepositoryZipFileName -ZielDir $TempDirExtractedZip
 
    ## im entpackten Zip PS Module suchen
-   $FoundGitHubModules = Find-PSD1-InDir -Dir $TempDir
+   $FoundGitHubModules = Find-PSD1-InDir -Dir $TempDirExtractedZip
 
 
    ## Alle gefundenen PS Module verarbeiten
    ForEach ($FoundGitHubModule in $FoundGitHubModules) {
       Write-Verbose ('Testing: {0}' -f $FoundGitHubModule.ModuleName)
-      # 🟩 Installieren?
+
+      # Das Dummy-PS-Module überspringen, ausser Pester ist aktiv
+      If (($FoundGitHubModule.ModuleName -eq 'Dummy-PS-Module') `
+            -and ($PesterIsActive -eq $False)) {
+         Continue
+      }
 
       ## Finden wir das GitHub Modul in der gewünschten Installationsliste?
       $oModuleToInstall = $oInstallModuleNames | ? Item -eq $FoundGitHubModule.ModuleName
@@ -1692,5 +1865,5 @@ Try {
 
 } Finally {
    # Das Arbeitsverzeichnis löschen
-   Remove-Item -LiteralPath $TempDir -Recurse -Force -EA SilentlyContinue
+   Remove-Item -LiteralPath $TempDirRoot -Recurse -Force -EA SilentlyContinue
 }

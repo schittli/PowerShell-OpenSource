@@ -264,7 +264,8 @@ Describe 'Test Install-Module-GitHub.ps1' {
          #    Delete-PSModule-Dir -ModuleSubDir $ThisModuleCfg.ModuleSubDir -DeleteAllUsers -DeleteCurrentUser
          # }
 
-         $Null = & $InstallModuleGitHub_ps1 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
+         $Null = & $InstallModuleGitHub_ps1 -PesterIsActive `
+                                 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
                                  -ProposedDefaultScope ([Enum]::ToObject([eModuleScope], $ZielScope)) `
                                  -InstallAllModules
 
@@ -278,7 +279,8 @@ Describe 'Test Install-Module-GitHub.ps1' {
          $InstallVersion = [Int][eModulVersion]::V100
          $ZielScope = [Int][eModuleScope]::CurrentUser
 
-         $Null = & $InstallModuleGitHub_ps1 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
+         $Null = & $InstallModuleGitHub_ps1 -PesterIsActive `
+                                 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
                                  -ProposedDefaultScope ([Enum]::ToObject([eModuleScope], $ZielScope)) `
                                  -InstallAllModules
 
@@ -304,7 +306,8 @@ Describe 'Test Install-Module-GitHub.ps1' {
          $Set20InitInstallVersion = [Int][eModulVersion]::V100
          $Set20InitZielScope = [Int][eModuleScope]::AllUsers
 
-         $Null = & $InstallModuleGitHub_ps1 -RepositoryZipFile $ModuleVersions[($Set20InitInstallVersion)].ZipFile `
+         $Null = & $InstallModuleGitHub_ps1 -PesterIsActive `
+            -RepositoryZipFile $ModuleVersions[($Set20InitInstallVersion)].ZipFile `
             -ProposedDefaultScope ([Enum]::ToObject([eModuleScope], $Set20InitZielScope)) `
             -InstallAllModules
       }
@@ -318,7 +321,8 @@ Describe 'Test Install-Module-GitHub.ps1' {
          $OriInstallTimestamp = Get-Item -LiteralPath (Join-Path $ModuleScopesDir[($Set20InitZielScope)] $ModuleVersions[($Set20InitInstallVersion)].ModuleSubDir) | select -ExpandProperty LastWriteTime
          Start-Sleep -Milliseconds 1500
 
-         $Null = & $InstallModuleGitHub_ps1 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
+         $Null = & $InstallModuleGitHub_ps1 -PesterIsActive `
+                                 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
                                  -ProposedDefaultScope ([Enum]::ToObject([eModuleScope], $ZielScope)) `
                                  -InstallAllModules `
                                  -Force
@@ -339,7 +343,8 @@ Describe 'Test Install-Module-GitHub.ps1' {
          $OriInstallTimestamp = Get-Item -LiteralPath (Join-Path $ModuleScopesDir[($Set20InitZielScope)] $ModuleVersions[($Set20InitInstallVersion)].ModuleSubDir) | select -ExpandProperty LastWriteTime
          Start-Sleep -Milliseconds 1500
 
-         $Null = & $InstallModuleGitHub_ps1 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
+         $Null = & $InstallModuleGitHub_ps1 -PesterIsActive `
+                                 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
                                  -InstallAllModules `
                                  -UpgradeInstalledModule
 
@@ -358,7 +363,8 @@ Describe 'Test Install-Module-GitHub.ps1' {
          $OriInstallTimestamp = Get-Item -LiteralPath (Join-Path $ModuleScopesDir[($Set20InitZielScope)] $ModuleVersions[($Set20InitInstallVersion)].ModuleSubDir) | select -ExpandProperty LastWriteTime
          Start-Sleep -Milliseconds 1500
 
-         $Null = & $InstallModuleGitHub_ps1 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
+         $Null = & $InstallModuleGitHub_ps1 -PesterIsActive `
+                                 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
                                  -InstallAllModules `
                                  -UpgradeInstalledModule `
                                  -Force
@@ -378,7 +384,8 @@ Describe 'Test Install-Module-GitHub.ps1' {
          # Name des Versionsverzeichnisses
          $OriInstallVersionDirName = Get-Item -LiteralPath (Join-Path $ModuleScopesDir[($Set20InitZielScope)] $ModuleVersions[($Set20InitInstallVersion)].ModuleSubDir) | select -ExpandProperty Name
 
-         $Null = & $InstallModuleGitHub_ps1 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
+         $Null = & $InstallModuleGitHub_ps1 -PesterIsActive `
+                                 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
                                  -InstallAllModules `
                                  -UpgradeInstalledModule
 
@@ -400,7 +407,8 @@ Describe 'Test Install-Module-GitHub.ps1' {
          # Timestamp der aktuellen Modul-Installation
          $OriInstallTimestamp = Get-Item -LiteralPath (Join-Path $ModuleScopesDir[($Set20InitZielScope)] $ModuleVersions[($Set20InitInstallVersion)].ModuleSubDir) | select -ExpandProperty LastWriteTime
 
-         $Null = & $InstallModuleGitHub_ps1 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
+         $Null = & $InstallModuleGitHub_ps1 -PesterIsActive `
+            -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
             -InstallAllModules `
             -ProposedDefaultScope ([Enum]::ToObject([eModuleScope], $ZielScope))
 
@@ -422,7 +430,8 @@ Describe 'Test Install-Module-GitHub.ps1' {
          # Timestamp der aktuellen Modul-Installation
          $OriInstallTimestamp = Get-Item -LiteralPath (Join-Path $ModuleScopesDir[($Set20InitZielScope)] $ModuleVersions[($Set20InitInstallVersion)].ModuleSubDir) | select -ExpandProperty LastWriteTime
 
-         $Null = & $InstallModuleGitHub_ps1 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
+         $Null = & $InstallModuleGitHub_ps1 -PesterIsActive `
+            -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
             -InstallAllModules `
             -ProposedDefaultScope ([Enum]::ToObject([eModuleScope], $ZielScope)) `
             -Force
@@ -445,7 +454,8 @@ Describe 'Test Install-Module-GitHub.ps1' {
          # Timestamp der aktuellen Modul-Installation
          $OriInstallTimestamp = Get-Item -LiteralPath (Join-Path $ModuleScopesDir[($Set20InitZielScope)] $ModuleVersions[($Set20InitInstallVersion)].ModuleSubDir) | select -ExpandProperty LastWriteTime
 
-         $Null = & $InstallModuleGitHub_ps1 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
+         $Null = & $InstallModuleGitHub_ps1 -PesterIsActive `
+            -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
             -InstallAllModules `
             -EnforceScope ([Enum]::ToObject([eModuleScope], $ZielScope))
 
@@ -467,7 +477,8 @@ Describe 'Test Install-Module-GitHub.ps1' {
          # Timestamp der aktuellen Modul-Installation
          $OriInstallTimestamp = Get-Item -LiteralPath (Join-Path $ModuleScopesDir[($Set20InitZielScope)] $ModuleVersions[($Set20InitInstallVersion)].ModuleSubDir) | select -ExpandProperty LastWriteTime
 
-         $Null = & $InstallModuleGitHub_ps1 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
+         $Null = & $InstallModuleGitHub_ps1 -PesterIsActive `
+            -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
             -InstallAllModules `
             -ProposedDefaultScope ([Enum]::ToObject([eModuleScope], $ZielScope))
 
@@ -486,7 +497,8 @@ Describe 'Test Install-Module-GitHub.ps1' {
          $InstallVersion = [Int][eModulVersion]::V200
          $ZielScope = [Int][eModuleScope]::CurrentUser
 
-         $Null = & $InstallModuleGitHub_ps1 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
+         $Null = & $InstallModuleGitHub_ps1 -PesterIsActive `
+            -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
             -InstallAllModules `
             -ProposedDefaultScope ([Enum]::ToObject([eModuleScope], $ZielScope)) `
             -Force
@@ -503,7 +515,8 @@ Describe 'Test Install-Module-GitHub.ps1' {
          $InstallVersion = [Int][eModulVersion]::V200
          $ZielScope = [Int][eModuleScope]::CurrentUser
 
-         $Null = & $InstallModuleGitHub_ps1 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
+         $Null = & $InstallModuleGitHub_ps1 -PesterIsActive `
+            -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
             -InstallAllModules `
             -ProposedDefaultScope ([Enum]::ToObject([eModuleScope], $ZielScope)) `
             -UpgradeInstalledModule
@@ -523,7 +536,8 @@ Describe 'Test Install-Module-GitHub.ps1' {
          # Timestamp der aktuellen Modul-Installation
          $OriInstallTimestamp = Get-Item -LiteralPath (Join-Path $ModuleScopesDir[($Set20InitZielScope)] $ModuleVersions[($Set20InitInstallVersion)].ModuleSubDir) | select -ExpandProperty LastWriteTime
 
-         $Null = & $InstallModuleGitHub_ps1 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
+         $Null = & $InstallModuleGitHub_ps1 -PesterIsActive `
+            -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
             -InstallAllModules `
             -EnforceScope ([Enum]::ToObject([eModuleScope], $ZielScope))
 
@@ -545,7 +559,8 @@ Describe 'Test Install-Module-GitHub.ps1' {
          # Timestamp der aktuellen Modul-Installation
          $OriInstallTimestamp = Get-Item -LiteralPath (Join-Path $ModuleScopesDir[($Set20InitZielScope)] $ModuleVersions[($Set20InitInstallVersion)].ModuleSubDir) | select -ExpandProperty LastWriteTime
 
-         $Null = & $InstallModuleGitHub_ps1 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
+         $Null = & $InstallModuleGitHub_ps1 -PesterIsActive `
+                                             -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
                                              -InstallAllModules `
                                              -EnforceScope ([Enum]::ToObject([eModuleScope], $ZielScope)) `
                                              -Force
@@ -568,7 +583,8 @@ Describe 'Test Install-Module-GitHub.ps1' {
          # Version der aktuellen Modul-Installation
          $OriInstallVersionDirName = Get-Item -LiteralPath (Join-Path $ModuleScopesDir[($Set20InitZielScope)] $ModuleVersions[($Set20InitInstallVersion)].ModuleSubDir) | select -ExpandProperty Name
 
-         $Null = & $InstallModuleGitHub_ps1 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
+         $Null = & $InstallModuleGitHub_ps1 -PesterIsActive `
+                                             -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
                                              -InstallAllModules `
                                              -EnforceScope ([Enum]::ToObject([eModuleScope], $ZielScope)) `
                                              -UpgradeInstalledModule
@@ -609,9 +625,10 @@ Describe 'Test Install-Module-GitHub.ps1' {
 
          ## In den Scopes installieren
          $Set30ZielScope1, $Set30ZielScope2 | % {
-            $Null = & $InstallModuleGitHub_ps1 -RepositoryZipFile $ModuleVersions[($Set30InitInstallVersion)].ZipFile `
-               -EnforceScope ([Enum]::ToObject([eModuleScope], $_)) `
-               -InstallAllModules
+            $Null = & $InstallModuleGitHub_ps1 -PesterIsActive `
+                        -RepositoryZipFile $ModuleVersions[($Set30InitInstallVersion)].ZipFile `
+                        -EnforceScope ([Enum]::ToObject([eModuleScope], $_)) `
+                        -InstallAllModules
          }
       }
 
@@ -624,7 +641,8 @@ Describe 'Test Install-Module-GitHub.ps1' {
          Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($Set30ZielScope1)] $ModuleVersions[($Set30InitInstallVersion)].ModuleSubDir) | Should -Be $True
          Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($Set30ZielScope2)] $ModuleVersions[($Set30InitInstallVersion)].ModuleSubDir) | Should -Be $True
 
-         $Null = & $InstallModuleGitHub_ps1 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
+         $Null = & $InstallModuleGitHub_ps1 -PesterIsActive `
+            -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
             -InstallAllModules `
             -ProposedDefaultScope ([Enum]::ToObject([eModuleScope], $ZielScope))
 
@@ -647,7 +665,8 @@ Describe 'Test Install-Module-GitHub.ps1' {
          Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($Set30ZielScope1)] $ModuleVersions[($Set30InitInstallVersion)].ModuleSubDir) | Should -Be $True
          Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($Set30ZielScope2)] $ModuleVersions[($Set30InitInstallVersion)].ModuleSubDir) | Should -Be $True
 
-         $Null = & $InstallModuleGitHub_ps1 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
+         $Null = & $InstallModuleGitHub_ps1 -PesterIsActive `
+            -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
             -InstallAllModules `
             -ProposedDefaultScope ([Enum]::ToObject([eModuleScope], $ZielScope)) `
             -Force
@@ -678,7 +697,8 @@ Describe 'Test Install-Module-GitHub.ps1' {
          Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($Set30ZielScope1)] $ModuleVersions[($Set30InitInstallVersion)].ModuleSubDir) | Should -Be $True
          Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($Set30ZielScope2)] $ModuleVersions[($Set30InitInstallVersion)].ModuleSubDir) | Should -Be $True
 
-         $Null = & $InstallModuleGitHub_ps1 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
+         $Null = & $InstallModuleGitHub_ps1 -PesterIsActive `
+            -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
             -InstallAllModules `
             -EnforceScope ([Enum]::ToObject([eModuleScope], $ZielScope)) `
             -Force
@@ -707,7 +727,8 @@ Describe 'Test Install-Module-GitHub.ps1' {
          Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($Set30ZielScope1)] $ModuleVersions[($Set30InitInstallVersion)].ModuleSubDir) | Should -Be $True
          Test-Path -LiteralPath (Join-Path $ModuleScopesDir[($Set30ZielScope2)] $ModuleVersions[($Set30InitInstallVersion)].ModuleSubDir) | Should -Be $True
 
-         $Null = & $InstallModuleGitHub_ps1 -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
+         $Null = & $InstallModuleGitHub_ps1 -PesterIsActive `
+            -RepositoryZipFile $ModuleVersions[($InstallVersion)].ZipFile `
             -InstallAllModules `
             -EnforceScope ([Enum]::ToObject([eModuleScope], $ZielScope)) `
             -UpgradeInstalledModule `
