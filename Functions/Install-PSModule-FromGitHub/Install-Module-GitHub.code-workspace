@@ -9,6 +9,7 @@
 		"configurations": []
 	},
 	"settings": {
+		// TomTom
 		"powershell.pester.codeLens": false,
 		"pester.autoRunOnSave": false
 	}

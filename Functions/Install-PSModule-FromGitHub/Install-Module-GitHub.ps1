@@ -1,8 +1,6 @@
 ﻿#
 #
 #
-#
-#
 #  # Aktualisiert ein allenfalls bereits installierte Module.
 #  # Wenn es noch nicht existiert, wird es im ProposedDefaultScope installiert
 #  -UpgradeInstalledModule -ProposedDefaultScope AllUsers|CurrentUser
@@ -33,9 +31,6 @@
 #
 # 🟩 -EnforceScope
 #
-#
-#
-
 # ✅
 # 🟩
 
@@ -55,17 +50,19 @@ Param(
 
    [String]$InstallZip,
 
-   [Parameter(Mandatory, ParameterSetName = 'ProposeDefaultScope')]
+   [Parameter(ParameterSetName = 'ProposeDefaultScope')]
    # Wenn das Modul noch nicht installiert ist, dann wird dieser Scope genützt
    [ValidateSet(IgnoreCase, 'AllUsers', 'CurrentUser')]
    [Alias('DefaultScope')]
    [AllowEmptyString()][String]$ProposedDefaultScope,
 
-   [Parameter(Mandatory, ParameterSetName = 'EnforceScope')]
+   [Parameter(ParameterSetName = 'EnforceScope')]
    # Das Modul wird zwingend in diesem Scope installiert, auch wenn es schon anderso installiert ist
    [ValidateSet(IgnoreCase, 'AllUsers', 'CurrentUser')]
    [AllowEmptyString()][String]$EnforceScope,
 
+   [Parameter(ParameterSetName = 'ProposeDefaultScope')]
+   [Parameter(ParameterSetName = 'EnforceScope')]
    [Parameter(Mandatory, ParameterSetName = 'UpgradeInstalledModule')]
    # Wenn das Modul schon installiert ist, wird es in diesem Scope aktualisiert
    [Switch]$UpgradeInstalledModule,
@@ -80,11 +77,11 @@ Param(
    [Switch]$Force,
 
    [Parameter(ParameterSetName = 'Getter')]
-   # Liefert das Berechnete AllUsers Modul Dir
+   # Liefert das berechnete AllUsers Modul Dir
    [Switch]$GetScopeAllUsers,
 
    [Parameter(ParameterSetName = 'Getter')]
-   # Liefert das Berechnete CurrentUser Modul Dir
+   # Liefert das berechnete CurrentUser Modul Dir
    [Switch]$GetScopeCurrentUser
 )
 
@@ -490,7 +487,7 @@ Function Upgrade-Module() {
       [Parameter(Mandatory, ParameterSetName = 'InstallToScope')]
       [eModuleScope]$eInstallScope,
       # Das Modul ist schon installiert und wir prüfen, ob es aktualisiert werden muss
-      [Parameter(Mandatory, ParameterSetName = 'UpdateInstalledModule')]
+      [Parameter(Mandatory, ParameterSetName = 'InstallToInstalledModule')]
       [PSModuleInfo]$oInstalledModule,
       # Liste von Verzeichnissen, die für die Modul-Installaton nicht kopiert werden
       # Das oberste Verzeichnis:
@@ -528,23 +525,49 @@ Function Upgrade-Module() {
       }
 
 
-      'UpdateInstalledModule' {
-
+      'InstallToInstalledModule' {
+         # Debugged: OK
          # Ist das bereits installierte Modul veraltet?
-         $ReinstallModule = $False
          Switch ( (Compare-Version ([Version]$oGitHubModule.PSDData.ModuleVersion) $oInstalledModule.Version) ) {
             ([eVersionCompare]::Equal) {
                Write-Host ('  Bereits aktuell')
                If ($Force) {
                   Write-Host ('  > forciere Installation')
-                  $ReinstallModule = $True
+                  # Modul löschen
+                  Delete-Module -oInstalledModule $oInstalledModule
+                  If (Test-Path -LiteralPath $oInstalledModule.ModuleBase) {
+                     # Das Modul existiert immer noch
+                     Write-Error ('Konnte das installierte Modul nicht löschen: {0}' -f $oInstalledModule.ModuleBase)
+                     Return
+                  }
+                  # Das Modul Installieren
+                  Copy-Dir-WithBlackList -SrcDir $oGitHubModule.ModuleRootDir -DstDir $oInstalledModule.ModuleBase `
+                     -BlackListDirsRgx $BlackListDirsRgx
+               } Else {
+                  Write-Host '-Force wurde nicht angegeben > Modul wird nicht aktualisiert' -ForegroundColor Red
                }
             }
 
             ([eVersionCompare]::LeftIsNewer) {
                Write-Host ('  Veraltet')
                Write-Host ('   Installiert: {0} - GitHub: {1}' -f [String]$oInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
-               $ReinstallModule = $True
+               If ($Force) {
+                  # Modul aktualisieren
+                  Write-Host ('  > Upgrade Module')
+                  Delete-Module -oInstalledModule $oInstalledModule
+                  If (Test-Path -LiteralPath $oInstalledModule.ModuleBase) {
+                     # Das Modul existiert immer noch
+                     Write-Error ('Konnte das installierte Modul nicht löschen: {0}' -f $oInstalledModule.ModuleBase)
+                     Return
+                  }
+
+                  # Das Modul in den Scope des bereits installierten Moduls installieren
+                  $ZielDir = Join-Path (Get-ModuleScope-Dir $oInstalledModule.eModuleScope) $oGitHubModule.ModuleInstallSubDir
+                  Copy-Dir-WithBlackList -SrcDir $oGitHubModule.ModuleRootDir -DstDir $ZielDir `
+                                         -BlackListDirsRgx $BlackListDirsRgx
+               } Else {
+                  Write-Host '-Force wurde nicht angegeben > Modul wird nicht aktualisiert' -ForegroundColor Red
+               }
             }
 
             ([eVersionCompare]::RightIsNewer) {
@@ -552,19 +575,6 @@ Function Upgrade-Module() {
                Write-Host ('   Installiert: {0} - GitHub: {1}' -f [String]$oInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
                Write-Host 'Lokale Kopie wird nicht aktualisiert!' -ForegroundColor Red
             }
-         }
-
-         If ($ReinstallModule) {
-            # Modul löschen
-            Delete-Module -oInstalledModule $oInstalledModule
-            If (Test-Path -LiteralPath $oInstalledModule.ModuleBase) {
-               # Das Modul existiert immer noch
-               Write-Error ('Konnte das installierte Modul nicht löschen: {0}' -f $oInstalledModule.ModuleBase)
-               Return
-            }
-            # Das Modul Installieren
-            Copy-Dir-WithBlackList -SrcDir $oGitHubModule.ModuleRootDir -DstDir $oInstalledModule.ModuleBase `
-                                    -BlackListDirsRgx $BlackListDirsRgx
          }
 
       }
@@ -772,6 +782,10 @@ Filter Assert-eModuleScope {
 }
 
 
+
+
+
+
 # Prüft, ob das GitHub heruntergeladenes Modul installiert / aktualisiert werden muss
 Function Check-Install-GitHubModule() {
    [CmdletBinding()]
@@ -805,10 +819,6 @@ Function Check-Install-GitHubModule() {
    $eDefaultScope | Assert-eModuleScope
    $eEnforceScope | Assert-eModuleScope
 
-   $eZielScope = $null
-   If ($eEnforceScope) { $eZielScope = $eEnforceScope }
-   Else { $eZielScope = $eDefaultScope }
-
    # Ist das Modul bereits installiert?
    $InstalledModules = @($oModulesList | ? Name -eq $oGitHubModule.ModuleName)
 
@@ -817,6 +827,8 @@ Function Check-Install-GitHubModule() {
          # Debugged: OK
          # Noch nicht installiert - das Modul kopieren
          # Nur, wenn ein Zielscope angegeben wurde
+         If ($eEnforceScope) { $eZielScope = $eEnforceScope }
+         Else { $eZielScope = $eDefaultScope }
          If ($eZielScope) {
             Upgrade-Module -oGitHubModule $oGitHubModule `
                            -eInstallScope $eZielScope `
@@ -832,10 +844,13 @@ Function Check-Install-GitHubModule() {
 
          # Das Scope-Dir bestimmen
          $InstalledModuleScopeDir = Get-Module-ScopeDir -oModule $ThisInstalledModule
-         $eModuleScopeType = Get-ModuleScope-Type -ScopeDir $InstalledModuleScopeDir
+         $InstalledeModuleScopeType = Get-ModuleScope-Type -ScopeDir $InstalledModuleScopeDir
 
          # Ist das Modul im gewünschten Scope?
-         $IsInRightScope = ($null -eq $eZielScope) -or ($eModuleScopeType -eq $eZielScope)
+         $IsInRightScope = $True
+         If ($eEnforceScope -and ($InstalledeModuleScopeType -ne $eEnforceScope)) {
+            $IsInRightScope = $False
+         }
 
          # Ist das installierte Modul veraltet?
          $UpgradeExistingModule = $False
@@ -843,16 +858,19 @@ Function Check-Install-GitHubModule() {
             ([eVersionCompare]::Equal) {
                Write-Host ('  Bereits aktuell')
                # Wenn installierte Module zwingend installiert werden sollen
-               If ($UpgradeInstalledModule -and $Force -or $IsInRightScope -and $Force) {
-                  Write-Host ('  > Forciere Neuinstallation')
+               If ($UpgradeInstalledModule -or ($IsInRightScope -and $Force)) {
+                  If ($Force) { Write-Host ('  > Forciere Neuinstallation') }
+                  Else { Write-Host ('  > Aktualisiere Modul') }
                   $UpgradeExistingModule = $True
                }
             }
 
             ([eVersionCompare]::LeftIsNewer) {
                Write-Host ('  Veraltet')
-               Write-Host ('   Installiert: {0} - GitHub: {1}' -f [String]$ThisInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
-               If ($IsInRightScope -or $IsInRightScope -eq $False -and $UpgradeInstalledModule) {
+               Write-Host ('   Version installiert: {0} - Version GitHub: {1}' -f [String]$ThisInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
+               If ($UpgradeInstalledModule -or ($IsInRightScope -and $Force)) {
+                  If ($Force) { Write-Host ('  > Forciere Neuinstallation') }
+                  Else { Write-Host ('  > Aktualisiere Modul') }
                   $UpgradeExistingModule = $True
                } Else {
                   Write-Host '-UpgradeInstalledModule wurde nicht angegeben' -ForegroundColor Red
@@ -862,7 +880,7 @@ Function Check-Install-GitHubModule() {
 
             ([eVersionCompare]::RightIsNewer) {
                Write-Host '  Lokale Version ist neuer!'
-               Write-Host ('   Installiert: {0} - GitHub: {1}' -f [String]$ThisInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
+               Write-Host ('   Version installiert: {0} - Version GitHub: {1}' -f [String]$ThisInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
                Write-Host 'Lokale Kopie wird nicht aktualisiert!' -ForegroundColor Red
             }
          }
@@ -871,18 +889,17 @@ Function Check-Install-GitHubModule() {
             # Das Modul aktualisieren
             Upgrade-Module -oGitHubModule $oGitHubModule -oInstalledModule $ThisInstalledModule `
                            -BlackListDirsRgx $BlackListDirsRgx `
-                           -Force:$Force
+                           -Force:$True
          }
 
          # Das Modul im richtigen Scope installieren
          If ($IsInRightScope -eq $False) {
-            If ($EnforceScopeDir) {
-               $ZielScopeDir = Join-Path $EnforceScopeDir $oGitHubModule.ModuleInstallSubDir
-            } Else {
-               $ZielScopeDir = Join-Path $ProposedDefaultScopeDir $oGitHubModule.ModuleInstallSubDir
-            }
-            Upgrade-Module -InstallScopeDir $ZielScopeDir -oGitHubModule $oGitHubModule `
-                           -BlackListDirsRgx $BlackListDirsRgx -oInstalledModule $ThisInstalledModule
+            If ($eEnforceScope) { $eZielScope = $eEnforceScope }
+            Else { $eZielScope = $eDefaultScope }
+            Upgrade-Module -oGitHubModule $oGitHubModule `
+                           -eInstallScope $eZielScope `
+                           -BlackListDirsRgx $BlackListDirsRgx `
+                           -Force:$Force
          }
       }
 
@@ -894,7 +911,7 @@ Function Check-Install-GitHubModule() {
             Write-Host (' {0}' -f $InstalledModule.ModuleBase) -NoNewline
             $ThisModuleScopeDir = Get-Module-ScopeDir -oModule $InstalledModule
 
-            $InstallModule = $False
+            $UpgradeExistingModule = $False
             Switch ( (Compare-Version ([Version]$oGitHubModule.PSDData.ModuleVersion) $InstalledModule.Version) ) {
                ([eVersionCompare]::Equal) {
                   Write-Host '  Bereits aktuell'
@@ -904,8 +921,10 @@ Function Check-Install-GitHubModule() {
                ([eVersionCompare]::LeftIsNewer) {
                   Write-Host '  Das Modul ist veraltet'
                   Write-Host ('   Installierte Version: {0} - GitHub Version: {1}' -f [String]$InstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
-                  If ($UpgradeInstalledModule) {
-                     $InstallModule = $True
+                  If ($UpgradeInstalledModule -or ($IsInRightScope -and $Force)) {
+                     If ($Force) { Write-Host ('  > Forciere Neuinstallation') }
+                     Else { Write-Host ('  > Aktualisiere Modul') }
+                     $UpgradeExistingModule = $True
                   }
                   Else {
                      Write-Host '-UpgradeInstalledModule wurde nicht angegeben' -ForegroundColor Red
@@ -919,10 +938,14 @@ Function Check-Install-GitHubModule() {
                   Write-Host 'Lokale Kopie wird nicht aktualisiert!' -ForegroundColor Red
                }
             }
-            If ($InstallModule) {
+            # Das installierte Modul aktualisieren
+            If ($UpgradeExistingModule) {
                # Das Modul aktualisieren
-               Upgrade-Module -InstallScopeDir $ZielScopeDir -oGitHubModule $oGitHubModule `
-                  -BlackListDirsRgx $BlackListDirsRgx -oInstalledModule $ThisInstalledModule
+               # Upgrade-Module -InstallScopeDir $ZielScopeDir -oGitHubModule $oGitHubModule `
+               #    -BlackListDirsRgx $BlackListDirsRgx -oInstalledModule $ThisInstalledModule
+               Upgrade-Module -oGitHubModule $oGitHubModule -oInstalledModule $ThisInstalledModule `
+                  -BlackListDirsRgx $BlackListDirsRgx `
+                  -Force:$True
             }
          }
       }
