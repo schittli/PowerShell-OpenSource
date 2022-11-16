@@ -22,7 +22,7 @@
 #  🟩 Modul ist installiert in: AllUsers Scope
 #     ✅ Force Neuinstallation in: AllUsers Scope
 #     ✅ Force Neuinstallation mit: -UpgradeInstalledModule
-#     🟩 Parallele Installation in: CurrentUser Scope
+#     📌 Parallele Installation in: CurrentUser Scope
 #     🟩 Parallele Installation in: CurrentUser Scope und -UpgradeInstalledModule
 #
 #  🟩 Modul ist installiert in: CurrentUser Scope
@@ -31,7 +31,7 @@
 #     🟩 Parallele Installation in: AllUsers Scope
 #     🟩 Parallele Installation in: AllUsers Scope und -UpgradeInstalledModule
 #
-# -EnforceScope
+# 🟩 -EnforceScope
 #
 #
 #
@@ -47,8 +47,14 @@
 # !M Install-Module
 # https://learn.microsoft.com/de-ch/powershell/module/PowershellGet/Install-Module?view=powershell-5.1
 
+
+# -InstallZip 'c:\Scripts\PowerShell\Install-Module-GitHub\!Q GitHubRepository\GitHubRepository-master.zip'
+
 [CmdletBinding(DefaultParameterSetName = 'ProposeDefaultScope')]
 Param(
+
+   [String]$InstallZip,
+
    [Parameter(Mandatory, ParameterSetName = 'ProposeDefaultScope')]
    # Wenn das Modul noch nicht installiert ist, dann wird dieser Scope genützt
    [ValidateSet(IgnoreCase, 'AllUsers', 'CurrentUser')]
@@ -71,9 +77,16 @@ Param(
    [String[]]$InstallModuleNames,
 
    # Ein bestehendes Modul wird zwingend aktualisiert
-   [Switch]$Force
-)
+   [Switch]$Force,
 
+   [Parameter(ParameterSetName = 'Getter')]
+   # Liefert das Berechnete AllUsers Modul Dir
+   [Switch]$GetScopeAllUsers,
+
+   [Parameter(ParameterSetName = 'Getter')]
+   # Liefert das Berechnete CurrentUser Modul Dir
+   [Switch]$GetScopeCurrentUser
+)
 
 
 ## Config Enums
@@ -84,7 +97,7 @@ If ([String]::IsNullOrWhiteSpace($ProposedDefaultScope)) {
    $eDefaultScope = $Null
 } Else {
    $TmpDefaultScope = [eModuleScope]"$($ProposedDefaultScope)"
-   Remove-Variable DefaultScope; $eDefaultScope = $TmpDefaultScope; Remove-Variable TmpDefaultScope
+   Remove-Variable ProposedDefaultScope; $eDefaultScope = $TmpDefaultScope; Remove-Variable TmpDefaultScope
 }
 
 If ([String]::IsNullOrWhiteSpace($EnforceScope)) {
@@ -101,14 +114,15 @@ If ([String]::IsNullOrWhiteSpace($EnforceScope)) {
 # Verzeichnisse von GitHub, die bei PS Modul-Installaton nicht kopiert werden
 $BlackListDirsRgx = @('^(\\|\.\\)*\.git', '\.vscode')
 
-$ZipFile     = 'c:\Scripts\PowerShell\Install-Module-GitHub\!Q GitHubRepository\GitHubRepository-master.zip'
-$ZielTestDir = 'c:\Scripts\PowerShell\Install-Module-GitHub\!Q GitHubRepository\ZielTestDir\'
-
 
 ## Install-Module: Scope
 # AllUsers, CurrentUser
 $AllUsersModulesDir = "$env:ProgramFiles\WindowsPowerShell\Modules"
 $CurrentUserModulesDir = "$home\Documents\WindowsPowerShell\Modules"
+
+
+If ($GetScopeAllUsers) { Return $AllUsersModulesDir }
+If ($GetScopeCurrentUser) { Return $CurrentUserModulesDir }
 
 
 # Extrahiert ein Zip-File in ein Ziel-Dir
@@ -969,11 +983,17 @@ Function Array-ToObj() {
    End {}
 }
 
+Function Get-TempDir() {
+   New-TemporaryFile | % { rm $_; mkdir $_ }
+}
+
 
 
 ### Prepare
 Add-Type -AssemblyName 'System.IO.Compression';
 Add-Type -AssemblyName 'System.IO.Compression.FileSystem';
+
+$TempDir = Get-TempDir
 
 
 ## Die Liste der zu installierenden Module in Objekte konvertieren
@@ -996,41 +1016,48 @@ $UsersModules = $AllInstalledModules | ? { @([eModuleScope]::AllUsers, [eModuleS
 
 ### Main
 
-## Zip extrahieren
-Extract-Zip -ZipFile $ZipFile -ZielDir $ZielTestDir
 
-## im entpackten Zip PS Module suchen
-$FoundGitHubModules = Find-PSD1-InDir -Dir $ZielTestDir
+Try {
+
+   ## Zip extrahieren
+   Extract-Zip -ZipFile $InstallZip -ZielDir $TempDir
+
+   ## im entpackten Zip PS Module suchen
+   $FoundGitHubModules = Find-PSD1-InDir -Dir $TempDir
 
 
-## Alle gefundenen PS Module verarbeiten
-ForEach ($FoundGitHubModule in $FoundGitHubModules) {
-   Write-Verbose ('Testing: {0}' -f $FoundGitHubModule.ModuleName)
-   # 🟩 Installieren?
+   ## Alle gefundenen PS Module verarbeiten
+   ForEach ($FoundGitHubModule in $FoundGitHubModules) {
+      Write-Verbose ('Testing: {0}' -f $FoundGitHubModule.ModuleName)
+      # 🟩 Installieren?
 
-   ## Finden wir das GitHub Modul in der gewünschten Installationsliste?
-   $oModuleToInstall = $oInstallModuleNames | ? Item -eq $FoundGitHubModule.ModuleName
-   # Das gewünschte Modul als gefunden markieren
-   $oModuleToInstall | % { $_.FoundOnGitHub = $True }
+      ## Finden wir das GitHub Modul in der gewünschten Installationsliste?
+      $oModuleToInstall = $oInstallModuleNames | ? Item -eq $FoundGitHubModule.ModuleName
+      # Das gewünschte Modul als gefunden markieren
+      $oModuleToInstall | % { $_.FoundOnGitHub = $True }
 
-   If ($InstallAllModules -or $oModuleToInstall) {
-      Write-Verbose ("Prüfe Modul: ")
-      Check-Install-GitHubModule -oGitHubModule $FoundGitHubModule -oModulesList $UsersModules `
-         -eDefaultScope $eDefaultScope -eEnforceScope $eEnforceScope `
-         -UpgradeInstalledModule:$UpgradeInstalledModule `
-         -BlackListDirsRgx $BlackListDirsRgx `
-         -Force:$Force
+      If ($InstallAllModules -or $oModuleToInstall) {
+         Write-Verbose ("Prüfe Modul: ")
+         Check-Install-GitHubModule -oGitHubModule $FoundGitHubModule -oModulesList $UsersModules `
+            -eDefaultScope $eDefaultScope -eEnforceScope $eEnforceScope `
+            -UpgradeInstalledModule:$UpgradeInstalledModule `
+            -BlackListDirsRgx $BlackListDirsRgx `
+            -Force:$Force
 
-    } Else {
-      Write-Verbose ('Skipped')
+       } Else {
+         Write-Verbose ('Skipped')
+      }
+
    }
 
-}
+   ## Wollte der User Module installieren, die das GitHub Repo nicht hat?
+   $MissingGithubModules = $oInstallModuleNames | ? FoundOnGitHub -eq $False
+   If ($MissingGithubModules) {
+      Write-Host 'Module auf GitHub nicht gefunden:' -ForegroundColor Red
+      $MissingGithubModules | % { Write-Host " $($_.Item)" }
+   }
 
-
-## Wollte der User Module installieren, die das GitHub Repo nicht hat?
-$MissingGithubModules = $oInstallModuleNames | ? FoundOnGitHub -eq $False
-If ($MissingGithubModules) {
-   Write-Host 'Module auf GitHub nicht gefunden:' -ForegroundColor Red
-   $MissingGithubModules | % { Write-Host " $($_.Item)" }
+} Finally {
+   # Das Arbeitsverzeichnis löschen
+   Remove-Item -LiteralPath $TempDir -Recurse -Force -EA SilentlyContinue
 }

@@ -7,5 +7,9 @@
 	"launch": {
 		"version": "0.2.0",
 		"configurations": []
+	},
+	"settings": {
+		"powershell.pester.codeLens": false,
+		"pester.autoRunOnSave": false
 	}
 }
