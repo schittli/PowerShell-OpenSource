@@ -1,0 +1,19 @@
+{
+   // Use IntelliSense to learn about possible attributes.
+   // Hover to view descriptions of existing attributes.
+   // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+   "version": "0.2.0",
+   "configurations": [
+      {
+         "name": "PS Install-Module-GitHub.ps1",
+         "type": "PowerShell",
+         "request": "launch",
+         "script": "${workspaceFolder}/Install-Module-GitHub.ps1",
+         "cwd": "${cwd}",
+         // "args": ["-ProposedDefaultScope AllUsers", "-EnforceScope CurrentUser"]
+         // "args": ["-ProposedDefaultScope AllUsers", "-InstallAllModules", "-Verbose", "-Force"]
+         // "args": ["-UpgradeInstalledModule", "-InstallAllModules", "-Verbose", "-Force"]
+         "args": ["-ProposedDefaultScope CurrentUser", "-InstallAllModules", "-Verbose", "-Force"]
+      }
+   ]
+}
