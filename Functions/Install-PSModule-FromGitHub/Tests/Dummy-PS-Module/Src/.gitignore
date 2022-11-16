@@ -2,5 +2,8 @@
 # Packages #
 # Alle Verzeichnisse erlauben
 !*/
-# !.git/
+# .git erlauben
+!.git/
+
+
 
