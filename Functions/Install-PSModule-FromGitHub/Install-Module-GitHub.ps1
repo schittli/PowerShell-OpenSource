@@ -10,6 +10,18 @@
 #  -UpgradeInstalledModule -EnforceScope AllUsers|CurrentUser
 #
 #
+# !Ex
+#  # Aktualisiert alle bereits installierten PS Module vom GitHub Repo
+#  # wenn sie veraltet sind
+#  C:\Scripts\PowerShell\Install-Module-GitHub\Install-Module-GitHub.ps1 -GitHubRepoUrl 'https://github.com/iainbrighton/GitHubRepository' -UpgradeInstalledModule
+#
+#  # Installiert die PS Module vom GitHub Repo in den AllUsers Scope
+#  C:\Scripts\PowerShell\Install-Module-GitHub\Install-Module-GitHub.ps1 -GitHubRepoUrl 'https://github.com/iainbrighton/GitHubRepository' -ProposedDefaultScope AllUsers -InstallAllModules
+#
+#  # Installiert die PS Module vom GitHub Repo in den AllUsers Scope
+#  # und installiert die Module nochmals zwingend
+#  C:\Scripts\PowerShell\Install-Module-GitHub\Install-Module-GitHub.ps1 -GitHubRepoUrl 'https://github.com/iainbrighton/GitHubRepository' -ProposedDefaultScope AllUsers -InstallAllModules -Force
+#
 #
 #  ToDo
 #  🟩 Neuer Parameter: GitHubUrl
@@ -17,14 +29,11 @@
 # ✅
 # 🟩
 
-
 # Ex GitHub Zip
 # c:\Scripts\PowerShell\Install-Module-GitHub\!Q GitHubRepository\GitHubRepository-master.zip
 
-
 # !M Install-Module
 # https://learn.microsoft.com/de-ch/powershell/module/PowershellGet/Install-Module?view=powershell-5.1
-
 
 # -InstallZip 'c:\Scripts\PowerShell\Install-Module-GitHub\!Q GitHubRepository\GitHubRepository-master.zip'
 
@@ -123,23 +132,23 @@ Param(
    [String]$RepositoryZipFileName,
 
    ## Mix der verschiedenen ParameterSets
-   [Parameter(Mandatory, ParameterSetName = 'InstallGitHubUrlProposedScope')]
-   [Parameter(Mandatory, ParameterSetName = 'InstallGitHubZipProposedScope')]
-   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsBranchProposedScope')]
-   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsTagProposedScope')]
-   [Parameter(Mandatory, ParameterSetName = 'InstallRepositoryZipFileProposedScope')]
+   [Parameter(ParameterSetName = 'InstallGitHubUrlProposedScope')]
+   [Parameter(ParameterSetName = 'InstallGitHubZipProposedScope')]
+   [Parameter(ParameterSetName = 'GitHubItemsBranchProposedScope')]
+   [Parameter(ParameterSetName = 'GitHubItemsTagProposedScope')]
+   [Parameter(ParameterSetName = 'InstallRepositoryZipFileProposedScope')]
    # Wenn das Modul noch nicht installiert ist, dann wird dieser Scope genützt
    [ValidateSet(IgnoreCase, 'AllUsers', 'CurrentUser')]
    [Alias('DefaultScope')]
    [AllowEmptyString()][String]$ProposedDefaultScope,
 
-   ## Mix der verschiedenen ParameterSets
-   [Parameter(Mandatory, ParameterSetName = 'InstallGitHubUrlEnforceScope')]
-   [Parameter(Mandatory, ParameterSetName = 'InstallGitHubZipEnforceScope')]
-   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsBranchEnforceScope')]
-   [Parameter(Mandatory, ParameterSetName = 'GitHubItemsTagEnforceScope')]
 
-   [Parameter(Mandatory, ParameterSetName = 'InstallRepositoryZipFileEnforceScope')]
+   ## Mix der verschiedenen ParameterSets
+   [Parameter(ParameterSetName = 'InstallGitHubUrlEnforceScope')]
+   [Parameter(ParameterSetName = 'InstallGitHubZipEnforceScope')]
+   [Parameter(ParameterSetName = 'GitHubItemsBranchEnforceScope')]
+   [Parameter(ParameterSetName = 'GitHubItemsTagEnforceScope')]
+   [Parameter(ParameterSetName = 'InstallRepositoryZipFileEnforceScope')]
    # Das Modul wird zwingend in diesem Scope installiert, auch wenn es schon anderso installiert ist
    [ValidateSet(IgnoreCase, 'AllUsers', 'CurrentUser')]
    [AllowEmptyString()][String]$EnforceScope,
@@ -1068,9 +1077,9 @@ Function Upgrade-Module() {
          # Ist das bereits installierte Modul veraltet?
          Switch ( (Compare-Version ([Version]$oGitHubModule.PSDData.ModuleVersion) $oInstalledModule.Version) ) {
             ([eVersionCompare]::Equal) {
-               Log ($Ident) ('  Bereits aktuell')
+               # Log ($Ident) 'Bereits aktuell (2)'
                If ($Force) {
-                  Log ($Ident+1) ('  > forciere Installation')
+                  # Log ($Ident+1) '> forciere Installation'
                   # Modul löschen
                   Delete-Module -oInstalledModule $oInstalledModule
                   If (Test-Path -LiteralPath $oInstalledModule.ModuleBase) {
@@ -1087,11 +1096,11 @@ Function Upgrade-Module() {
             }
 
             ([eVersionCompare]::LeftIsNewer) {
-               Log ($Ident) ('  Veraltet')
-               Log ($Ident+1) ('   Installiert: {0} - GitHub: {1}' -f [String]$oInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
+               Log ($Ident) 'Veraltet'
+               Log ($Ident+1) ('Installiert: {0} - GitHub: {1}' -f [String]$oInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
                If ($Force) {
                   # Modul aktualisieren
-                  Log ($Ident+1) ('  > Upgrade Module')
+                  Log ($Ident+1) '> Upgrade Module'
                   Delete-Module -oInstalledModule $oInstalledModule
                   If (Test-Path -LiteralPath $oInstalledModule.ModuleBase) {
                      # Das Modul existiert immer noch
@@ -1179,8 +1188,6 @@ Function Check-Install-GitHubModule() {
    )
 
    # Das Modul ist in einem Scope installiert
-   Log ($Ident) (' {0}' -f $oInstalledModule.ModuleBase) -NoNewline
-
    # Das Scope-Dir bestimmen
    $InstalledModuleScopeDir = Get-Module-ScopeDir -oModule $oInstalledModule
    $InstalledeModuleScopeType = Get-ModuleScope-Type -ScopeDir $InstalledModuleScopeDir
@@ -1197,29 +1204,29 @@ Function Check-Install-GitHubModule() {
    $UpgradeExistingModule = $False
    Switch ( (Compare-Version ([Version]$oGitHubModule.PSDData.ModuleVersion) $oInstalledModule.Version) ) {
             ([eVersionCompare]::Equal) {
-         Log ($Ident+1) ('  Bereits aktuell')
+         Log ($Ident) 'Modul ist bereits aktuell' -ForegroundColor Green
          # Wenn installierte Module zwingend installiert werden sollen
          If ($IsInRightScope) {
             If ($Force) {
-               Log ($Ident+1) ('  > Forciere Neuinstallation')
+               Log ($Ident+1) '> Forciere Neuinstallation' -ForegroundColor Magenta
                $UpgradeExistingModule = $True
             }
          } Else {
             # Wenn das Modul nicht im richtigen Scope ist,
             # die schon richtige Version nur bei -Force aktualisieren
             If ($UpgradeInstalledModule -and $Force) {
-               Log ($Ident+1) ('  > Forciere Neuinstallation')
+               Log ($Ident + 1) '> Forciere Neuinstallation' -ForegroundColor Magenta
                $UpgradeExistingModule = $True
             }
          }
       }
 
       ([eVersionCompare]::LeftIsNewer) {
-         Log ($Ident) ('  Veraltet')
-         Log ($Ident+1) ('   Version installiert: {0} - Version GitHub: {1}' -f [String]$oInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
+         Log ($Ident) 'Veraltet'
+         Log ($Ident+1) ('Version installiert: {0} - Version GitHub: {1}' -f [String]$oInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
          If ($UpgradeInstalledModule -or ($IsInRightScope -and $Force)) {
-            If ($Force) { Log ($Ident+1) ('  > Forciere Neuinstallation') }
-            Else { Log ($Ident+1) ('  > Aktualisiere Modul') }
+            If ($Force) { Log ($Ident+1) '> Forciere Neuinstallation' }
+            Else { Log ($Ident+1) '> Aktualisiere Modul' }
             $UpgradeExistingModule = $True
          }
          Else {
@@ -1229,7 +1236,7 @@ Function Check-Install-GitHubModule() {
       }
 
       ([eVersionCompare]::RightIsNewer) {
-         Log ($Ident) '  Lokale Version ist neuer!'
+         Log ($Ident) 'Lokale Version ist neuer!'
          Log ($Ident+1) ('   Version installiert: {0} - Version GitHub: {1}' -f [String]$oInstalledModule.Version, $oGitHubModule.PSDData.ModuleVersion)
          Log ($Ident+1) 'Lokale Kopie wird nicht aktualisiert!' -ForegroundColor Red
       }
@@ -1281,11 +1288,6 @@ Function Check-Install-GitHubModules() {
    )
 
 
-   Log ($Ident) 'Installiere GitHub Modul'
-   Log ($Ident+1) (' Modulname: {0}' -f $oGitHubModule.ModuleName)
-   Log ($Ident+1) (' Version  : {0}' -f $oGitHubModule.PSDData.ModuleVersion)
-   Log ($Ident+1) (' Quell-Dir: {0}' -f $oGitHubModule.ModuleRootDir)
-
    ## Prepare
    $eDefaultScope | Assert-eModuleScope
    $eEnforceScope | Assert-eModuleScope
@@ -1295,23 +1297,24 @@ Function Check-Install-GitHubModules() {
 
    Switch ($InstalledModules.Count) {
       0 {
-         # Debugged: OK
-         # Noch nicht installiert - das Modul kopieren
-         # Nur, wenn ein Zielscope angegeben wurde
+         Log ($Ident) 'Modul ist noch nicht installiert'
          If ($eEnforceScope) { $eZielScope = $eEnforceScope }
          Else { $eZielScope = $eDefaultScope }
          If ($eZielScope) {
+            Log ($Ident + 1) ('Installiere Modul, Ziel: {0}' -f $eZielScope) -ForegroundColor Yellow
             Upgrade-Module -oGitHubModule $oGitHubModule `
                            -eInstallScope $eZielScope `
                            -BlackListDirsRgx $BlackListDirsRgx `
                            -Force:$Force
+         } Else {
+            Log 4 'Kein Ziel-Scope angegeben (-ProposedDefaultScope / -EnforceScope)'
          }
       }
 
       1 {
-         # Das Modul ist in einem Scope installiert
+         Log ($Ident) 'Modul ist in diesem PS Modul-Scope installiert:'
          $ThisInstalledModule = $InstalledModules[0]
-         Log ($Ident) (' {0}' -f $ThisInstalledModule.ModuleBase) -NoNewline
+         Log ($Ident+1) $ThisInstalledModule.ModuleBase -ForegroundColor White
 
          Check-Install-GitHubModule -oGitHubModule $oGitHubModule -oInstalledModule $ThisInstalledModule `
                                     -eDefaultScope $eDefaultScope -eEnforceScope $eEnforceScope `
@@ -1321,7 +1324,7 @@ Function Check-Install-GitHubModules() {
 
       Default {
          # Das Modul ist in mehreren Scopes installiert
-         Log ($Ident) ' Das Modul ist in mehreren Scopes installiert'
+         Log ($Ident) ' Das Modul ist in mehreren PS Modul-Scopes installiert'
          ForEach ($InstalledModule in $InstalledModules) {
             # $ThisModuleScopeDir = ($InstalledModule.ModuleBase -split '\\' | select -SkipLast 2) -join '\'
             Log ($Ident+1) (' {0}' -f $InstalledModule.ModuleBase) -NoNewline
@@ -1429,6 +1432,8 @@ Function Count($Obj) {
 
 
 ### Prepare
+
+Log 0 'Initialisierung'
 Add-Type -AssemblyName 'System.IO.Compression';
 Add-Type -AssemblyName 'System.IO.Compression.FileSystem';
 
@@ -1438,21 +1443,28 @@ $oInstallModuleNames = Array-ToObj ($InstallModuleNames | ? { -not [String]::IsN
 # um zu erfassen, ob ein Modul in GitHub gefunden wurde
 $oInstallModuleNames | Add-Member -MemberType NoteProperty -Name FoundOnGitHub -Value $False
 
+# $HasInstallModuleNames = Count $oInstallModuleNames
+# If ($HasInstallModuleNames -eq $False -And $InstallAllModules -eq $False) {
+#    Log 1 '-InstallModuleNames nicht angegeben > aktiviere -InstallAllModules' -ForegroundColor Red
+#    $InstallAllModules = $True
+# }
+
 
 ## Wurde mind. 1 Parameter definiert, der eine Modulinstallation verlangt?
-If ($UpgradeInstalledModule -eq $False `
+If ($PesterIsActive -eq $false `
+   -and $PesterTestGithubDownloadOnly -eq $false `
+   -and $UpgradeInstalledModule -eq $False `
    -and $InstallAllModules -eq $False `
    -and ($oInstallModuleNames | Measure).Count -eq 0) {
 
-   Log 4 'Fehler:' -ForegroundColor Red -NoNewline
-   Log 4 'Mindestens einer dieser Parameter muss angegeben werden:' -ForegroundColor Red
+   Log 1 'Fehler: ' -ForegroundColor Red -NoNewline
+   Log 1 'Mindestens einer dieser Parameter muss angegeben werden:' -Append
    '-UpgradeInstalledModule','-InstallAllModules','-InstallModuleNames' | % {
-      Log 5 $_
+      Log 2 $_
    }
-   Log 4 'Abbruch' -ForegroundColor Red
+   Log 1 'Abbruch' -ForegroundColor Red
    Break Script
 }
-
 
 
 # Erzeuge ein temporäre Verzeichnis
@@ -1461,10 +1473,10 @@ $TempDirForZipFile = Join-Path $TempDirRoot 'ZipFile'
 $TempDirExtractedZip = Join-Path $TempDirRoot 'Extracted'
 
 
-
 ### Haben wir eine Repository-URL erhalten?
 If ([String]::IsNullOrWhiteSpace($GitHubRepoUrl) -eq $False) {
    ## Wir haben erhalten: $GitHubRepoUrl
+   Log 1 'Download GitHub Repository'
    # Versuchen, die DL Zip URL herauszufinden
    $RepoZipUri = Get-GitHubUrl-RepoZipUri $GitHubRepoUrl
    # Download starten
@@ -1474,6 +1486,7 @@ If ([String]::IsNullOrWhiteSpace($GitHubRepoUrl) -eq $False) {
 
 } ElseIf ([String]::IsNullOrWhiteSpace($GitHubZipUrl) -eq $False) {
    ## Wir haben erhalten: $GitHubZipUrl
+   Log 1 'Download GitHub Repository'
    # Download starten
    $RepositoryZipFileName = Download-File-FromUri -DownloadUrl $GitHubZipUrl `
                                  -DestinationDir $TempDirForZipFile -DestinationFilename 'GitHubRepo.zip' `
@@ -1481,6 +1494,7 @@ If ([String]::IsNullOrWhiteSpace($GitHubRepoUrl) -eq $False) {
 
 } ElseIf ([String]::IsNullOrWhiteSpace($GitHubOwnerName) -eq $False) {
    ## Wir haben erhalten: $GitHubOwnerName
+   Log 1 'Download GitHub Repository'
 
    # Versuchen, die DL Zip URL herauszufinden
    If ([String]::IsNullOrWhiteSpace($GitHubBranchName) -eq $False) {
@@ -1508,21 +1522,23 @@ If ($PesterTestGithubDownloadOnly) {
 }
 
 
-
 # !KH
 # $PathResoved = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($DestinationPath);
 
+
 ## Alle installierten Module suchen
+Log 1 'Analysiere installierte PS Module'
 $AllInstalledModules = Get-Module -ListAvailable -Verbose:$False
 # Metadaten ergänzen
 Add-Module-ScopeData -ModuleList $AllInstalledModules -AllUsersScope $AllUsersModulesDir -CurrentUserScope $CurrentUserModulesDir
 # Uns interessieren nur AllUsers und CurrentUser
-$UsersModules = $AllInstalledModules | ? { @([eModuleScope]::AllUsers, [eModuleScope]::CurrentUser) -contains $_.eModuleScope }
+$AllUsersAndCurrentUserModules = $AllInstalledModules | ? { @([eModuleScope]::AllUsers, [eModuleScope]::CurrentUser) -contains $_.eModuleScope }
 
 
 
 ### Main
 
+Log 0 'Prüfe Modul-Installation'
 
 Try {
 
@@ -1538,10 +1554,13 @@ Try {
    ## im entpackten Zip PS Module suchen
    $FoundGitHubModules = Find-PSD1-InDir -Dir $TempDirExtractedZip
 
-
    ## Alle gefundenen PS Module verarbeiten
+
+   $HasProposedDefaultScope = $eDefaultScope -ne $null
+   $HasEnforceScope = $eEnforceScope -ne $null
+
    ForEach ($FoundGitHubModule in $FoundGitHubModules) {
-      Log -IfVerbose 0 ('Testing: {0}' -f $FoundGitHubModule.ModuleName)
+      Log 1 ('Modul: {0}' -f $FoundGitHubModule.ModuleName)
 
       # Das Dummy-PS-Module überspringen, ausser Pester ist aktiv
       If (($FoundGitHubModule.ModuleName -eq 'Dummy-PS-Module') `
@@ -1553,17 +1572,31 @@ Try {
       $oModuleToInstall = $oInstallModuleNames | ? Item -eq $FoundGitHubModule.ModuleName
       # Das gewünschte Modul als gefunden markieren
       $oModuleToInstall | % { $_.FoundOnGitHub = $True }
+      $IsInExplicitList = (Count $oModuleToInstall) -gt 0
 
-      If ($InstallAllModules -or $oModuleToInstall) {
-         Log -IfVerbose 0 ("Prüfe Modul: ")
-         Check-Install-GitHubModules -oGitHubModule $FoundGitHubModule -oModulesList $UsersModules `
+      # Ist das Modul bereits installiert?
+      $IsModuleInstalled = (Count ($AllUsersAndCurrentUserModules | ? Name -eq $FoundGitHubModule.ModuleName) -gt 0)
+
+      If ($InstallAllModules -or $IsInExplicitList `
+            -or ($IsModuleInstalled -and $UpgradeInstalledModule)) {
+         Log 2 'Prüfe Installation'
+         Log -IfVerbose 3 (' GitHub-Modul:')
+         Log -IfVerbose 3 (' Modulname: {0}' -f $oGitHubModule.ModuleName)
+         Log -IfVerbose 3 (' Version  : {0}' -f $oGitHubModule.PSDData.ModuleVersion)
+         Log -IfVerbose 3 (' Quell-Dir: {0}' -f $oGitHubModule.ModuleRootDir)
+
+         Check-Install-GitHubModules -oGitHubModule $FoundGitHubModule -oModulesList $AllUsersAndCurrentUserModules `
             -eDefaultScope $eDefaultScope -eEnforceScope $eEnforceScope `
             -UpgradeInstalledModule:$UpgradeInstalledModule `
             -BlackListDirsRgx $BlackListDirsRgx `
             -Force:$Force
 
-       } Else {
-         Log -IfVerbose 0 ('Skipped')
+      } Else {
+         If ($UpgradeInstalledModule -and $IsModuleInstalled -eq $False) {
+            Log 2 ('Skipped, Modul ist nicht installiert')
+         } Else {
+            Log 2 ('Skipped, nicht in der gewünschten Modulliste')
+         }
       }
    }
 
@@ -1571,8 +1604,8 @@ Try {
    ## Wollte der User Module installieren, die das GitHub Repo nicht hat?
    $MissingGithubModules = $oInstallModuleNames | ? FoundOnGitHub -eq $False
    If ($MissingGithubModules) {
-      Log 4 'Module auf GitHub nicht gefunden:' -ForegroundColor Red
-      $MissingGithubModules | % { Write-Host " $($_.Item)" }
+      Log 0 'Diese Module sind nicht im GitHub-Repository' -ForegroundColor Red
+      $MissingGithubModules | % { Log 1 " $($_.Item)" }
    }
 
 } Catch {
