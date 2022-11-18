@@ -1,4 +1,34 @@
+# Installiert PowerShell Module von einem GitHub Repository
+#	Das GitHub Repo kann mehrere Module beinhalten
+#	Das Script:
+#	• Lädt das Repository zip herunter
+#	• entpackt es
+#	• sucht jedes Modul (die *.psd1 Dateien)
+#	• und installiert je nach Parameter:
+#		-InstallAllModules
+#			alle gefundenen Module
+#		-InstallModuleNames @('','')
+#			Die aufgelisteten Modulnamen
 #
+#
+# Wichtigste Parameter
+#	
+#	-InstallAllModules
+#		alle gefundenen Module
+#	-InstallModuleNames @('','')
+#		Die aufgelisteten Modulnamen
+#	-UpgradeInstalledModule
+#		Aktualisiert bereits installierte Module
+#	-Force
+#		Installiert Module immer und überschreibt sie allenfalls
+#
+#
+# !Ex
+#	# Startet dieses Script direkt von GitHub
+#	#	und holt die PS Module vom angegebenen GitHub Repo
+#	# 	und aktualisiert die bereits installierten Module
+#	$GitHubRepo = 'https://github.com/iainbrighton/GitHubRepository'
+#	iex "& { $(irm 'https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Install-PSModule-FromGitHub/Install-Module-GitHub.ps1') } -GitHubRepoUrl $GitHubRepo -UpgradeInstalledModule"
 #
 #
 #  # Aktualisiert ein allenfalls bereits installierte Module.
@@ -10,7 +40,6 @@
 #  -UpgradeInstalledModule -EnforceScope AllUsers|CurrentUser
 #
 #
-# !Ex
 #  # Aktualisiert alle bereits installierten PS Module vom GitHub Repo
 #  # wenn sie veraltet sind
 #  C:\Scripts\PowerShell\Install-Module-GitHub\Install-Module-GitHub.ps1 -GitHubRepoUrl 'https://github.com/iainbrighton/GitHubRepository' -UpgradeInstalledModule
