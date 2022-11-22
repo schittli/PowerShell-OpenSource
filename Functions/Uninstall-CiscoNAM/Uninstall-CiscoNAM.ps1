@@ -3,7 +3,7 @@
 # 
 # 
 # !Ex
-# 	# In PowerShell ausführen:
+# 	# In PowerShell ausführen, das Script startet sich automatisch elevated:
 # 	[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm 'https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Uninstall-CiscoNAM/Uninstall-CiscoNAM.ps1') }"
 # 
 # 
