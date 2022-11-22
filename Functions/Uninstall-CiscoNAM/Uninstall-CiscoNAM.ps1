@@ -208,6 +208,19 @@ Function Log() {
 #Endregion Toms Tools: Log
 
 
+Function Has-Value($Data) {
+	If ($Data -eq $null) { Return $False }
+	Switch ($Data.GetType().Name) {
+		'String' {
+			If ([String]::IsNullOrEmpty($Data)) { Return $False } 
+			Else { Return $True }
+		}
+		Default {
+			Return $True
+		}
+	}
+}
+
 
 # Erzeugt aus
 # C:\Program Files (x86)\Cisco\Cisco AnyConnect Secure Mobility Client\Uninstall.exe -remove
