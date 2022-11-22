@@ -7,10 +7,20 @@
 # Getting started:
 # https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell/ReadMe.html
 # 
+# !Ex
+# 	# 1. PowerShell als Administrator öffnen
+# 	# 2. Ausführen: (mit copy & paste!)
+#		[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm 'https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb"
+#
+# 	# Variante mit -WhatIf:
+#		[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm 'https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb -WhatIf"
+# 
 # 
 # 
 # 001, 221109, Tom
 # 002, 221109
+# 003, 221122
+#	Neu: -BinDlUrl
 
 
 [CmdletBinding(SupportsShouldProcess, DefaultParameterSetName = 'SetupDefaultModules')]
@@ -20,16 +30,14 @@ Param(
 	[Parameter(ParameterSetName = 'SetupIndividualModules')]
 	[ValidateSet(IgnoreCase, 'VPN', 'SBL', 'DART', 'NAM', 'Umbrella', 'Posture', 'ISEPosture', 'AMPEnabler', 'NVM')]  
 	[String[]]$CiscoModules,
-	[Switch]$InstallFromWeb
+	[Switch]$InstallFromWeb,
+	# Die Url zum Bin-Verzeichnis mit den Msi Files
+	[String]$BinDlUrl = 'https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell/Bin'
 )
 
 
 
 ## Config
-
-
-# Die Url zum Bin-Verzeichnis mit den Msi Files
-$BinDlUrl = 'https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell/Bin'
 
 # Die Standardmodule, die in der Nosergruppe installiert werden
 $NosergroupDefaultModules = @('VPN', 'AMPEnabler', 'Umbrella', 'ISEPosture', 'DART')
