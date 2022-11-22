@@ -13,7 +13,7 @@
 [CmdletBinding(SupportsShouldProcess)]
 Param (
 	# Die elevated Shell nicht schliessen
-	[Switch]$NoExit = $True,
+	[Switch]$NoExit,
 	# Wenn definiert, dann wird nicht die automatische Deinstallation gestartet
 	[Switch]$TestControlPanel
 )
