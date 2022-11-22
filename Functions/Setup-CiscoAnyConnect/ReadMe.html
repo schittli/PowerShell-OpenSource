@@ -1,0 +1,30 @@
+<p style = "font-family:consolas;serif;font-size:12px;">
+Pfad: 
+<a href="https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell">https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell</a>
+</p>
+</br></br>
+
+
+<H1>Cisco AnyConnect</H1>
+<B>Installation der Cisco Standard-Komponenten f&uuml;r die Nosergruppe</B>
+
+
+<H2>Installation starten:</H2>
+
+1.	PowerShell als Administrator &ouml;ffnen</br>
+2. Ausf&uuml;hren: (mit copy & paste!)</br>
+
+<p style = "font-family:consolas;serif;font-size:16px;">
+	[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm 'https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb"
+</p>
+
+</br>
+<H5>Variante mit -WhatIf:</H5>
+
+<p style = "font-family:consolas;serif;font-size:16px;">
+
+# Mit -WhatIf</br>
+[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm 'https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb -WhatIf"
+</p>
+
+
