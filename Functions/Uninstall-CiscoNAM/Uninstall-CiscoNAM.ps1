@@ -16,10 +16,27 @@ Param (
 	[Switch]$TestControlPanel
 )
 
+
+## Pre-Conditions
+If ($PSVersionTable.PSVersion.Major -gt 5) {
+	Write-Host "`nDieses Script muss in PowerShell 5 gestartet werden" -ForegroundColor Red
+	Start-Sleep -MilliS 2500
+	Write-Host -NoNewLine "`nPress any key to continue…" -ForegroundColor Green
+	$null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+	Return
+}
+
+
+
+
 ## Config 
 
 $Version = '1.0, 22.11.22'
 $Feedback = 'bitte an: schittli@akros.ch'
+
+# Perma Link zum eigenen Script
+$ThisScriptPermaLink = 'https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Uninstall-CiscoNAM/Uninstall-CiscoNAM.ps1'
+
 
 
 #Region Toms Tools: Log
@@ -546,14 +563,54 @@ Function Get-CiscoSetupFilename-VersionInfo($CiscoSetupFilename) {
 }
 
 
+# True, wenn Elevated
+# 220813
+Function Is-Elevated() {
+	([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] 'Administrator')
+}
+
+
+
 ## Prepare
+
+# Start Elevated
+if (!(Is-Elevated)) {
+	Write-Host ">> starte PowerShell als Administrator (Elevated)`n`n" -ForegroundColor Red
+	Start-Sleep -Seconds 4
+
+	$Command = "Invoke-Expression -Command (Invoke-RestMethod -Uri `"$ThisScriptPermaLink`")"
+	
+	If ($NoExit) {
+		Start-Process PowerShell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -NoExit -Command $Command"
+	} Else {
+		Start-Process PowerShell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -Command $Command"
+	}
+
+	# Exit from the current, unelevated, process
+	Start-Sleep -MilliS 2500
+	Exit
+	
+} Else {
+	$Host.UI.RawUI.WindowTitle = $MyInvocation.MyCommand.Definition + ' (Elevated)'
+	$Host.UI.RawUI.BackgroundColor = 'DarkBlue'
+	Clear-Host
+	Log 0 'Pruefe, ob das Cisco Modul Network Access Manager (NAM) installiert ist'
+	Log 1 "Version: $Version" -ForegroundColor DarkGray
+	Log 1 "Rückmeldungen bitte an: $Feedback" -ForegroundColor DarkGray
+}
+
+
+If ( (Is-Elevated) -eq $False) {
+	Write-Host "`nDas Script muss als Administrator / Elevated ausgeführt werden" -ForegroundColor Red
+	Start-Sleep -MilliS 3500
+	Write-Host -NoNewLine "`nPress any key to continue…" -ForegroundColor Green
+	$null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+	Return
+}
+
 
 
 ## Main
-
-Log 0 'Pruefe, ob das Cisco Modul Network Access Manager (NAM) installiert ist'
-Log 1 "Version: $Version" -ForegroundColor DarkGray
-Log 1 "Rückmeldungen bitte an: $Feedback" -ForegroundColor DarkGray
 
 Log 1 'Lese die Liste der installierten SW'
 # Alle installierte Cisco SW bestimmen
