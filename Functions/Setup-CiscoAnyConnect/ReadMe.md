@@ -7,14 +7,14 @@ Pfad: https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell
 
 Installation starten:
 1. PowerShell als Administrator öffnen
-2. Ausführen: (mit copy & paste!)
-```PowerShell
-[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm 'https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb"
-```
+2. Ausführen (mit copy & paste!):
+
+   `[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm 'https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb"`
+
 
 ## Variante mit -WhatIf:
 1. PowerShell als Administrator öffnen
-2. Ausführen: (mit copy & paste!)
-```PowerShell
-[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm 'https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb -WhatIf"
-```
+2. Ausführen (mit copy & paste!):
+
+   `[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm 'https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb -WhatIf"`
+
