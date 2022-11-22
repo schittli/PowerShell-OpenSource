@@ -2,6 +2,12 @@
 # Aktualisiert wenn nötig die anderen Cisco Module
 # 
 # 
+# !Ex
+# 	# In PowerShell ausführen:
+# 	[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm 'https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Uninstall-CiscoNAM/Uninstall-CiscoNAM.ps1') }"
+# 
+# 
+# 
 # 001, 221122
 
 [CmdletBinding(SupportsShouldProcess)]
@@ -13,6 +19,7 @@ Param (
 ## Config 
 
 $Version = '1.0, 22.11.22'
+$Feedback = 'bitte an: schittli@akros.ch'
 
 
 #Region Toms Tools: Log
@@ -546,6 +553,7 @@ Function Get-CiscoSetupFilename-VersionInfo($CiscoSetupFilename) {
 
 Log 0 'Pruefe, ob das Cisco Modul Network Access Manager (NAM) installiert ist'
 Log 1 "Version: $Version" -ForegroundColor DarkGray
+Log 1 "Rückmeldungen bitte an: $Feedback" -ForegroundColor DarkGray
 
 Log 1 'Lese die Liste der installierten SW'
 # Alle installierte Cisco SW bestimmen
