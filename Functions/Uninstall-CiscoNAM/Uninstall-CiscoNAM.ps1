@@ -13,7 +13,7 @@
 [CmdletBinding(SupportsShouldProcess)]
 Param (
 	# Die elevated Shell nicht schliessen
-	[Switch]$NoExit,
+	[Switch]$NoExit = $True,
 	# Wenn definiert, dann wird nicht die automatische Deinstallation gestartet
 	[Switch]$TestControlPanel
 )
@@ -659,5 +659,5 @@ If ($CiscoNAM) {
 
 If ($NoExit -eq $False) {
 	Write-Host ' Das Fenster wird sich in 5s selber schliessen' -ForegroundColor Gray
-	Start-Sleep -MilliS 5000
+	Start-Sleep -Milliseconds 5000
 }
