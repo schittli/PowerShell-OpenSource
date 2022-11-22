@@ -553,7 +553,6 @@ Function Get-Installed-Software {
 }
 
 
-
 # Sucht die installierte Cisco Software
 # !Ex
 # 	Get-CiscoSW-ToUninstall -Property DisplayVersion, VersionMajor, Installdate, Uninstallstring
@@ -562,19 +561,6 @@ Function Get-CiscoSW-ToUninstall([String[]]$Property, [String[]]$IncludeProgram 
 	If ($Property) { $Splat += @{ Property = $Property } }
 	If ($IncludeProgram) { $Splat += @{ IncludeProgram = $IncludeProgram } }
 	Get-Installed-Software @Splat
-}
-
-
-
-# Extrahiert aus dem Cisco zip / exe Dateinamen die Versions-Information
-# 
-# !Ex
-# 	Get-CiscoSetupFilename-VersionInfo 'anyconnect-win-4.10.05111-predeploy-k9 - Noser Setup.exe'
-# 	Get-CiscoSetupFilename-VersionInfo 'anyconnect-win-4.10.05111-predeploy-k9 - Original Cisco.zip'
-Function Get-CiscoSetupFilename-VersionInfo($CiscoSetupFilename) {
-	If ($CiscoSetupFilename -match '(?<Version>(\d+\.){0,3}(\d+))') {
-		Return [Version]$Matches.Version
-	}
 }
 
 
