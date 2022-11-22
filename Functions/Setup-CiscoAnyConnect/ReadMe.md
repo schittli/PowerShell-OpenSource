@@ -19,7 +19,7 @@ Installation starten:
    `[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm 'https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb -WhatIf"`
 
 
-### 👉 Manuelle Installation per GUI
+### 👉 Variante: Manuelle Installation per GUI
 
 Siehe:
 [https://github.com/schittli/noser-deploy-CiscoAnyConnectExe
