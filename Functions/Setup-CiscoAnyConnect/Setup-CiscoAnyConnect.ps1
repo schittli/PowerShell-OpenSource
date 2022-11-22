@@ -409,6 +409,31 @@ Function Is-WhatIf() {
 }
 
 
+# Holt eine Msi-Datei vom Web
+Function Get-MsiFile-FromWeb() {
+	Param(
+		[Parameter(Mandatory)]
+		[String]$MsiExeFileName,
+		[Parameter(Mandatory)]
+		[String]$BinDlUrl,
+		[Parameter(Mandatory)]
+		[String]$TempDir
+	)
+	
+	# Das MSI vom Web holen
+	$MsiUrl = Join-URL $BinDlUrl $MsiExeFileName
+	$DlFilename = Join-Path $TempDir $MsiExeFileName
+	# Download
+	$Res = Invoke-WebRequest -URI $MsiUrl -OutFile $DlFilename -PassThru
+	If ($Res.StatusCode -eq 200) {
+		Return $DlFilename
+	} Else {
+		Log 4 'Fehler beim Download von:' -ForegroundColor Red
+		Log 4 ('{0}' -f $MsiUrl)
+		Return $Null
+	}
+}
+
 
 # Sucht das passende MSI vom lokalen BinDir
 # oder auf Wunsch aus dem Web:
@@ -418,64 +443,77 @@ Function Get-MsiFile() {
 		[Parameter(Mandatory)]
 		[String]$MsiExeFileName,
 		[Parameter(Mandatory)]
-		[String]$LocalBinDir,
-		[Parameter(Mandatory)]
-		[String]$BinDlUrl,
-		[Parameter(Mandatory)]
-		[String]$TempDir,
-		[Switch]$InstallFromWeb
+		[String]$LocalBinDir
 	)
 	
+	# Das MSI lokal suchen
+	$MatchingMsiFiles = @(Get-ChildItem -LiteralPath $LocalBinDir -Filter $MsiExeFileName)
 	
-	If ($InstallFromWeb) {
-		# Das MSI vom Web holen
-		$MsiUrl = Join-URL $BinDlUrl $MsiExeFileName
-		$DlFilename = Join-Path $TempDir $MsiExeFileName
-		# Download
-		$Res = Invoke-WebRequest -URI $MsiUrl -OutFile $DlFilename -PassThru
-		If ($Res.StatusCode -eq 200) {
-			Return $DlFilename
-		} Else {
-			Write-Host 'Fehler beim Download von:' -ForegroundColor Red
-			Write-Host ('{0}' -f $MsiUrl)
+	Switch($MatchingMsiFiles.Count) {
+		0 {
+			Log 4 'MSI nicht gefunden:' -ForegroundColor Red
+			Log 5 "Verzeichnis: $($LocalBinDir)" -ForegroundColor White
+			Log 5 "File       : $($MsiExeFileName)" -ForegroundColor White
 			Return $Null
 		}
-	} Else {
 		
-		# Das MSI lokal suchen
-		$MatchingMsiFiles = @(Get-ChildItem -LiteralPath $LocalBinDir -Filter $MsiExeFileName)
+		1 {
+			$ThisMsiFilename = $MatchingMsiFiles[0].FullName
+			Return $ThisMsiFilename
+		}
 		
-		Switch($MatchingMsiFiles.Count) {
-			0 {
-				Write-Host 'MSI nicht gefunden:' -ForegroundColor Red
-				Write-Host "Verzeichnis: $($LocalBinDir)"
-				Write-Host "File       : $($MsiExeFileName)"
-				Return $Null
+		Default {
+			Log 4 'Mehrere MSI gefunden:' -ForegroundColor Red
+			Log 5 "Verzeichnis: $($LocalBinDir)" -ForegroundColor White
+			Log 5 "Fuer File  : $($MsiExeFileName)" -ForegroundColor White
+			Log 5 'Matching Files:' -ForegroundColor White
+			$MatchingMsiFiles | % {
+				Log 6 "$($_.FullName)" -ForegroundColor White
 			}
-			
-			1 {
-				$ThisMsiFilename = $MatchingMsiFiles[0].FullName
-				Return $ThisMsiFilename
-			}
-			
-			Default {
-				Write-Host 'Mehrere MSI gefunden:' -ForegroundColor Red
-				Write-Host "Verzeichnis: $($LocalBinDir)"
-				Write-Host "Fuer File  : $($MsiExeFileName)"
-				Write-Host 'Matching Files:'
-				$MatchingMsiFiles | % {
-					Write-Host "$($_.FullName)"
-				}
-				Return $Null
-			}
+			Return $Null
 		}
 	}
 }
 
 
+
 Function Start-CiscoAnyConnectExe() {
 	$CiscoAnyConnectExe = (Get-ChildItem -LiteralPath 'C:\Program Files (x86)\Cisco\' -Filter 'vpnui.exe' -Recurse | Sort LastWriteTime -Descending | select -First 1 -ExpandProperty Fullname)
 	If ($CiscoAnyConnectExe) { . $CiscoAnyConnectExe }
+}
+
+
+
+# Sucht in der Liste der Files der Webseite
+# dieses msi, das zum Cisco Modul passt
+Function Get-CiscoModule-Filename() {
+	Param(
+		[Parameter(Mandatory)]
+		[eCiscoModule]$eCiscoModule,
+		[Parameter(Mandatory)]
+		[Object[]]$WebSiteFilenames
+	)
+	
+	$ModuleFiles = @($WebSiteFilenames | ? Item  -like "*$($SetupCfg[ $eCiscoModule ].MsiName)*" | select -ExpandProperty Item)
+	
+	Switch ($ModuleFiles.Count) {
+		0 {
+			Log 4 "Kein Cisco Setup File gefunden fuer: $eCiscoModule" -ForegroundColor Red
+			Log 4 'Abbruch' -ForegroundColor Red
+			Break Script
+		}
+		1 {
+			Return $ModuleFiles[0]
+		}
+		Default {
+			Log 4 "Mehrere Cisco Setup File gefunden fuer: $eCiscoModule" -ForegroundColor Red
+			$ModuleFiles | % {
+				Log 5 $_ -ForegroundColor White
+			}
+			Log 4 'Abbruch' -ForegroundColor Red
+			Break Script
+		}
+	}
 }
 
 
@@ -520,11 +558,10 @@ If ($InstallNosergroupDefaultModules) {
 }
 
 
-
-3## Main
+## Main
 
 Log 1 'Lese die Cisco-Version'
-$CiscoVersions, $CiscoFiles = @(Get-Webfiles-CiscoVersions -Url $BinDlUrl -FileTypes $CiscoSetupFileTypes)
+$CiscoVersions, $CiscoWebSiteFilenames = @(Get-Webfiles-CiscoVersions -Url $BinDlUrl -FileTypes $CiscoSetupFileTypes)
 
 ## Haben wir nur 1 Cisco Version?
 Switch ($CiscoVersions.Count) {
@@ -567,20 +604,29 @@ $Anz = $eSelectedModules.Count
 $Cnt = 1
 ForEach($eSelectedModule in $eSelectedModules) {
 	$ThisModuleCfg = $SetupCfg[$eSelectedModule]
-	Write-Host ("Installiere {0}/{1}: {2}" -f ($Cnt++), $Anz, $ThisModuleCfg.Name) -ForegroundColor Yellow
+	Log 2 ("Installiere {0}/{1}: {2}" -f ($Cnt++), $Anz, $ThisModuleCfg.Name) -ForegroundColor Yellow
 	
-	# Den Exe-Namen berechnen
-	$MsiExeFileName = ('{0}{1}{2}{3}{4}' -f $MsiFilenamePrefix, $VersionZuInstallieren, $MsiFilenameDelimiter, $ThisModuleCfg.MsiName, $SetupExt)
-	# Debug
-	# Write-Host $MsiExeFileName
+	If ($InstallFromWeb) {
+		# In der Dateiliste das richtige msi suchen
+		$SetupFileName = Get-CiscoModule-Filename -eCiscoModule $eSelectedModule -WebSiteFilenames $CiscoWebSiteFilenames 
+		
+		$ThisMsiFilename = Get-MsiFile-FromWeb -MsiExeFileName $SetupFileName -BinDlUrl $BinDlUrl -TempDir $TempDir
+
+	} Else {
+		
+		# Den Exe-Namen berechnen
+		$MsiExeFileName = ('{0}{1}{2}{3}{4}' -f $MsiFilenamePrefix, $VersionZuInstallieren, $MsiFilenameDelimiter, $ThisModuleCfg.MsiName, $SetupExt)
+		# Debug
+		# Write-Host $MsiExeFileName
+		
+		# Das MSI File suchen oder herunterladen
+		$ThisMsiFilename = Get-MsiFile -MsiExeFileName $MsiExeFileName `
+									-LocalBinDir $LocalBinDir `
+									-BinDlUrl $BinDlUrl `
+									-TempDir $TempDir
+		# Write-Host "Gefunden: $($ThisMsiFilename)"
+	}
 	
-	# Das MSI File suchen oder herunterladen
-	$ThisMsiFilename = Get-MsiFile -MsiExeFileName $MsiExeFileName `
-								-LocalBinDir $LocalBinDir `
-								-BinDlUrl $BinDlUrl `
-								-TempDir $TempDir `
-								-InstallFromWeb:$InstallFromWeb
-	# Write-Host "Gefunden: $($ThisMsiFilename)"
 	
 	# Wenn wir ein MSI File haben
 	If ($ThisMsiFilename) {
@@ -589,8 +635,8 @@ ForEach($eSelectedModule in $eSelectedModules) {
 		
 		# Setup starten
 		If (Is-WhatIf) {
-			Write-Host 'WhatIf:'
-			Write-Host "Start-Process -Wait -FilePath $ThisMsiFilename -ArgumentList $($ThisMsiParams -Join ',')"
+			Log 2 'WhatIf:'
+			Log 3 "Start-Process -Wait -FilePath $ThisMsiFilename -ArgumentList $($ThisMsiParams -Join ',')"
 		} Else {
 			# Start-Process -Wait -FilePath 'C:\Windows\system32\msiexec.exe' -ArgumentList @('/i', " `"$CiscoSetupMSI`"", '/passive')
 			
@@ -600,5 +646,5 @@ ForEach($eSelectedModule in $eSelectedModules) {
 	}
 }
 	
-Write-Host "`nStarte Cisco AnyConnect" -ForegroundColor Yellow
+Log 0 'Starte Cisco AnyConnect' -ForegroundColor Yellow -NewLineBefore
 Start-CiscoAnyConnectExe
