@@ -39,12 +39,15 @@ Param(
 
 ## Config
 
+$VersionZuInstallieren = '4.10.05111'
+
+$CiscoSetupFileTypes = @('.msi$', '.zip$')
+
 # Die Standardmodule, die in der Nosergruppe installiert werden
 $NosergroupDefaultModules = @('VPN', 'AMPEnabler', 'Umbrella', 'ISEPosture', 'DART')
 
 ## Konfiguration der MSI Setup Parameter
 $MsiFilenamePrefix = 'anyconnect-win-'
-$Version = '4.10.05111'
 $MsiFilenameDelimiter = '-'
 $SetupExt = '.msi'
 
@@ -134,6 +137,81 @@ $SetupCfg = @{
 
 Function Get-TempDir() {
 	New-TemporaryFile | %{ rm $_ -Force -WhatIf:$False; mkdir $_ -WhatIf:$False }
+}
+
+# Erzeugt aus einem String[] eine Liste von PSCustomObject
+# Debugged: OK
+Function Array-ToObj() {
+   [CmdletBinding()]
+   Param(
+      [String[]]$Items
+   )
+   Begin {}
+   Process {
+      ForEach ($Item in $Items) {
+         [PSCustomObject][Ordered]@{
+            Item = $Item
+         }
+      }
+   }
+
+   End {}
+}
+
+
+
+# Extrahiert aus dem Cisco zip / exe Dateinamen die Versions-Information
+# 
+# !Ex
+# 	Get-CiscoSetupFilename-VersionInfo 'anyconnect-win-4.10.05111-predeploy-k9 - Noser Setup.exe'
+# 	Get-CiscoSetupFilename-VersionInfo 'anyconnect-win-4.10.05111-predeploy-k9 - Original Cisco.zip'
+Function Get-CiscoSetupFilename-VersionInfo($CiscoSetupFilename) {
+	If ($CiscoSetupFilename -match '(?<Version>(\d+\.){0,3}(\d+))') {
+		Return [Version]$Matches.Version
+	}
+}
+
+
+# Liest von einer Webseite die Liste der Files,
+# die zu einem Filetyp passen
+Function Get-Web-Filelisting() {
+	Param(
+		[Parameter(Mandatory)][String]$Url,
+		# e.g. @('.msi$', '.zip$')
+		[Parameter(Mandatory)][String[]]$FileTypes
+	)
+	
+	$Files = Invoke-WebRequest $Url -UseBasicParsing
+	If ($Files) {
+		$Res = @()
+		ForEach ($Link in $Files.Links) {
+			If ($Link.href -Match ($FileTypes -join '|')) {
+				$Res += $Link.href
+			}
+		}
+		Return $Res
+	}
+}
+
+
+# Liest von einem Webverzeichnis
+# alle Files und extrahiert die Cisco-Version
+Function Get-Webfiles-CiscoVersions() {
+	Param(
+		[Parameter(Mandatory)][String]$Url,
+		# e.g. @('.msi$', '.zip$')
+		[Parameter(Mandatory)][String[]]$FileTypes
+	)
+	
+	$Files = Get-Web-Filelisting -Url $Url -FileTypes $FileTypes
+	If ($Files) {
+		$Files = Array-ToObj -Items $Files
+		ForEach ($Filename in $Files) {
+			$FileVersion = Get-CiscoSetupFilename-VersionInfo $Filename
+			$Filename | Add-Member -MemberType NoteProperty -Name oVersion -Value $FileVersion
+		}
+	}
+	Return $Files | select oVersion -Unique
 }
 
 
@@ -226,10 +304,14 @@ Function Start-CiscoAnyConnectExe() {
 }
 
 
+
 ## Prepare
 
 $LocalBinDir = Join-Path $ScriptDir 'Bin'
 $TempDir = Get-TempDir
+
+# 
+$CiscoVersions = Get-Webfiles-CiscoVersions -Url $BinDlUrl -FileTypes $CiscoSetupFileTypes
 
 # Aus den gewaehlten Modulen die Enum-Liste erstellen
 $eSelectedModules = @()
@@ -283,7 +365,7 @@ ForEach($eSelectedModule in $eSelectedModules) {
 	Write-Host ("Installiere {0}/{1}: {2}" -f ($Cnt++), $Anz, $ThisModuleCfg.Name) -ForegroundColor Yellow
 	
 	# Den Exe-Namen berechnen
-	$MsiExeFileName = ('{0}{1}{2}{3}{4}' -f $MsiFilenamePrefix, $Version, $MsiFilenameDelimiter, $ThisModuleCfg.MsiName, $SetupExt)
+	$MsiExeFileName = ('{0}{1}{2}{3}{4}' -f $MsiFilenamePrefix, $VersionZuInstallieren, $MsiFilenameDelimiter, $ThisModuleCfg.MsiName, $SetupExt)
 	# Debug
 	# Write-Host $MsiExeFileName
 	
