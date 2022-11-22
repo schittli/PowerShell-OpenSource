@@ -602,6 +602,48 @@ if (!(Is-Elevated)) {
 }
 
 
+# Stellt sicher, 
+# - dass MSI-Uninstall-Strings nicht als App-Install/Konfig-Strings ausgeführt werden
+# - dass ein Reboot wann immer möglich unterdrückt wird
+Function Uninstall-Software-By-UninstallString() {
+	[CmdletBinding(SupportsShouldProcess)]
+	Param (
+		[Parameter(Position = 0, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+		[String]$UninstallString,
+		[Parameter(Position = 1, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+		[String]$ProgramName, 
+		[Switch]$ShowDebugInfo
+	)
+
+	If (Has-Value $ProgramName) { Log 2 "Deinstalliere: $ProgramName" }
+	If ($ShowDebugInfo) { Log 3 "UninstallString: $UninstallString" }
+
+	If ($UninstallString -like 'MsiEx*') {
+		# Uninstall mit MSI
+		$Items = $UninstallString -Split '\s+'
+		$Command = $Items[0]
+		# Dummerweise sind manche Uninstall-Strings im Endeffekt App-Install/Konfig-Strings
+		# Drum /I mit /x ersetzen
+		$Arg1 = $Items[1] -replace '/i','/x'
+		If ($ShowDebugInfo) {
+			Log 3 "Starte MSI:"
+			Log 4 "$Command $($Arg1) /qn REBOOT=SUPPRESS"
+		}
+		Start-Process $Command -ArgumentList "$($Arg1) /qn REBOOT=SUPPRESS" -Wait
+	} Else {
+		# Uninstall ohne MSI
+		If ($ShowDebugInfo) { Log 3 "UninstallString Ori: $UninstallString" }
+		$FixedUninstallString = Fix-UninstallString $UninstallString
+		If ($ShowDebugInfo) { Log 3 "UninstallString Bereinigt: $FixedUninstallString" }
+		$Program, $Arguments = Split-Programm-And-Arguments $FixedUninstallString
+		If ($ShowDebugInfo) { Log 3 "Starte Uninstall-String:" }
+		If ($ShowDebugInfo) { Log 4 "Program: $Program" }
+		If ($ShowDebugInfo) { Log 4 "Arguments: $Arguments" }
+		Start-Process $Program -ArgumentList $Arguments -Wait
+	}	
+}
+
+
 If ( (Is-Elevated) -eq $False) {
 	Write-Host "`nDas Script muss als Administrator / Elevated ausgeführt werden" -ForegroundColor Red
 	Start-Sleep -MilliS 3500
