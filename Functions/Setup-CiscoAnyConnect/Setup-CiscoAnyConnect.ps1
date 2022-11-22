@@ -39,6 +39,9 @@ Param(
 
 ## Config
 
+$Version = '1.0, 22.11.22'
+$Feedback = 'bitte an: schittli@akros.ch'
+
 $VersionZuInstallieren = '4.10.05111'
 
 $CiscoSetupFileTypes = @('.msi$', '.zip$')
@@ -135,6 +138,174 @@ $SetupCfg = @{
 }
 
 
+#Region Toms Tools: Log
+
+# Log
+# Prüft, ob $Script:LogColors definiert ist und nützt dann dieses zur Farbgebung
+# $Script:LogColors =@('Cyan', 'Yellow')
+#
+# 0: Thema - 1: Kapitel - 2: OK - 3: Error
+# 200604 175016
+# 200805 103305
+#  Neu: Optional BackgroundColor
+# 211129 110213
+#  Fix -ClrToEol zusammen mit -ReplaceLine
+# 220926 152200
+#  Neu: [Switch]IfVerbose
+#	Wir dur ausgegeben, wenn Verbose aktiv ist
+#  Fix bei NewLineBefore
+# 221116 191858
+#  Wenn Get-Host keine echte Console hat (und z.B. BackgroundColor $null ist)
+#  dann arbeiten wir mit default Werten
+$Script:LogColors = @('Green', 'Yellow', 'Cyan', 'Red')
+Function Log() {
+   [CmdletBinding(SupportsShouldProcess)]
+   Param (
+      [Parameter(Position = 0)]
+      [Int]$Indent,
+
+      [Parameter(Position = 1)]
+      [String]$Message = '',
+
+      [Parameter(Position = 2)]
+      [ConsoleColor]$ForegroundColor,
+
+      # Vor der Nachricht eine Leerzeile
+      [Parameter(Position = 3)]
+      [Switch]$NewLineBefore,
+
+      # True: Die aktuelle Zeile wird gelöscht und neu geschrieben
+      [Parameter(Position = 4)]
+      [Switch]$ReplaceLine = $false,
+
+      # True: Am eine keinen Zeilenumbruch
+      [Parameter(Position = 5)]
+      [Switch]$NoNewline = $false,
+
+      # Append, also kein Präfix mit Ident
+      [Parameter(Position = 6)]
+      [Switch]$Append = $false,
+
+      # Löscht die Zeile bis zum Zeilenende
+      [Parameter(Position = 7)]
+      [Switch]$ClrToEol = $false,
+
+      # Ausgabe erfolgt nur, wenn Verbose aktiv ist
+      [Switch]$IfVerbose,
+
+      [Parameter(Position = 8)]
+      [ConsoleColor]$BackgroundColor
+   )
+
+   # Irgend ein fix / workaround
+   $PSBoundParametersCopy = $PSBoundParameters
+
+   If ($Script:LogDisabled -eq $true) { Return }
+
+   # Wenn Verbose gewünscht aber nicht aktiv, dann sind wir fertig
+   If ($IfVerbose -and (Is-Verbose) -eq $False) {
+      Return
+   }
+
+   ## Init der Get-Host Config Daten
+   # $Script:LogDefaultBackgroundColor
+   If ($null -eq $Script:LogDefaultBackgroundColor) {
+      If ($null -eq (Get-Host).UI.RawUI.BackgroundColor) {
+         $Script:LogDefaultBackgroundColor = [ConsoleColor]::Black
+      } Else {
+         $Script:LogDefaultBackgroundColor = (Get-Host).UI.RawUI.BackgroundColor
+      }
+   }
+   # $Script:LogMaxWindowSizeWidth
+   If ($null -eq $Script:LogMaxWindowSizeWidth) {
+      If ($null -eq (Get-Host).UI.RawUI.MaxWindowSize) {
+         $Script:LogMaxWindowSizeWidth = 132
+      } Else {
+         $Script:LogMaxWindowSizeWidth = (Get-Host).UI.RawUI.BackgroundColor
+      }
+   }
+
+   If ($NewLineBefore) { Write-Host '' }
+   If ([String]::IsNullOrEmpty($Message)) { $Message = '' }
+
+   If ($Indent -eq $null) { $Indent = 0 }
+   If ($null -eq $BackgroundColor) { $BackgroundColor = $Script:LogDefaultBackgroundColor }
+
+   If ($ReplaceLine) { $Message = "`r$Message" }
+
+   $WriteHostArgs = @{ }
+   If ($null -eq $ForegroundColor) {
+      If ($null -ne $Script:LogColors -and $Indent -le $Script:LogColors.Count -and $Script:LogColors[$Indent] -ne $null) {
+         Try {
+            $ForegroundColor = $Script:LogColors[$Indent]
+         }
+         Catch {
+            Write-Host "Ungültige Farbe: $($Script:LogColors[$Indent])" -ForegroundColor Red
+         }
+      }
+      If ($null -eq $ForegroundColor) {
+         $ForegroundColor = [ConsoleColor]::White
+      }
+   }
+   If ($ForegroundColor) {
+      $WriteHostArgs += @{ ForegroundColor = $ForegroundColor }
+   }
+   $WriteHostArgs += @{ BackgroundColor = $BackgroundColor }
+
+   If ($NoNewline) {
+      $WriteHostArgs += @{ NoNewline = $true }
+   }
+
+   If ($Append) {
+      $Msg = $Message
+      If ($ClrToEol) {
+         $Width = $Script:LogMaxWindowSizeWidth
+         If ($Msg.Length -lt $Width) {
+            $Spaces = $Width - $Msg.Length
+            $Msg = "$Msg$(' ' * $Spaces)"
+         }
+      }
+   }
+   Else {
+      Switch ($Indent) {
+         0 {
+            $Msg = "* $Message"
+            If ($NoNewline -and $ClrToEol) {
+               $Width = $Script:LogMaxWindowSizeWidth
+               If ($Msg.Length -lt $Width) {
+                  $Spaces = $Width - $Msg.Length
+                  $Msg = "$Msg$(' ' * $Spaces)"
+               }
+            }
+            If (!($ReplaceLine)) {
+               $Msg = "`n$Msg"
+            }
+         }
+         Default {
+            $Msg = $(' ' * ($Indent * 2) + $Message)
+            If ($NoNewline -and $ClrToEol) {
+               # Rest der Zeile mit Leerzeichen überschreiben
+               $Width = $Script:LogMaxWindowSizeWidth
+               If ($Msg.Length -lt $Width) {
+                  $Spaces = $Width - $Msg.Length
+                  $Msg = "$Msg$(' ' * $Spaces)"
+               }
+            }
+         }
+      }
+   }
+
+   Write-Host $Msg @WriteHostArgs
+
+   # if (!([String]::IsNullOrEmpty($LogFile))) {
+   # 	"$([DateTime]::Now.ToShortDateString()) $([DateTime]::Now.ToLongTimeString())   $Message" | Out-File $LogFile -Append
+   # }
+}
+
+#Endregion Toms Tools: Log
+
+
+
 Function Get-TempDir() {
 	New-TemporaryFile | %{ rm $_ -Force -WhatIf:$False; mkdir $_ -WhatIf:$False }
 }
@@ -194,8 +365,12 @@ Function Get-Web-Filelisting() {
 }
 
 
-# Liest von einem Webverzeichnis
+# Liest von einem Webverzeichnis wie
+# 	https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell/Bin/
 # alle Files und extrahiert die Cisco-Version
+# 
+# !Ex
+# 	$CiscoVersions, $Files = Get-Webfiles-CiscoVersions -Url $BinDlUrl -FileTypes $CiscoSetupFileTypes
 Function Get-Webfiles-CiscoVersions() {
 	Param(
 		[Parameter(Mandatory)][String]$Url,
@@ -211,7 +386,7 @@ Function Get-Webfiles-CiscoVersions() {
 			$Filename | Add-Member -MemberType NoteProperty -Name oVersion -Value $FileVersion
 		}
 	}
-	Return $Files | select oVersion -Unique
+	Return @( @($Files | select oVersion -Unique), $Files)
 }
 
 
@@ -310,8 +485,10 @@ Function Start-CiscoAnyConnectExe() {
 $LocalBinDir = Join-Path $ScriptDir 'Bin'
 $TempDir = Get-TempDir
 
-# 
-$CiscoVersions = Get-Webfiles-CiscoVersions -Url $BinDlUrl -FileTypes $CiscoSetupFileTypes
+Log 0 'Pruefe, ob Cisco AnyConnect aktualisiert werden muss'
+Log 1 "Version: $Version" -ForegroundColor DarkGray
+Log 1 "Rückmeldungen bitte an: $Feedback" -ForegroundColor DarkGray
+
 
 # Aus den gewaehlten Modulen die Enum-Liste erstellen
 $eSelectedModules = @()
@@ -344,16 +521,44 @@ If ($InstallNosergroupDefaultModules) {
 
 
 
-## Main
+3## Main
 
-Write-Host "`n`n`n`n`nCisco-Installation" -ForegroundColor Green
-Write-Host "Fehler & Ideen bitte an: schittli@akros.ch" -ForegroundColor DarkGray
-If ($InstallNosergroupDefaultModules) {
-	Write-Host "Installation der Standard-Komponenten fuer Geraete der Nosergruppe:" -ForegroundColor Green
-} Else {
-	Write-Host "Installation von individuellen Komponenten:" -ForegroundColor Green
+Log 1 'Lese die Cisco-Version'
+$CiscoVersions, $CiscoFiles = @(Get-Webfiles-CiscoVersions -Url $BinDlUrl -FileTypes $CiscoSetupFileTypes)
+
+## Haben wir nur 1 Cisco Version?
+Switch ($CiscoVersions.Count) {
+	0 {
+		Log 0 'Keine Cisco Setup-Files gefunden auf:' -ForegroundColor Red
+		Log 1 "$BinDlUrl" -ForegroundColor White
+		Log 0 'Abbruch' -ForegroundColor Red
+		Break Script
+	}
+	1 {
+		# OK!
+	}
+	Default {
+		Log 0 'Mehrere Cisco Setup-File Versionen gefunden auf:' -ForegroundColor Red
+		Log 1 "$BinDlUrl" -ForegroundColor White
+		
+		$CiscoVersions | % {
+			Log 2 $_.oVersion
+		}
+		
+		Log 0 'Abbruch' -ForegroundColor Red
+		Break Script
+	}
 }
-Write-Host "$($eSelectedModules -Join ', ')`n"
+
+
+## Installation starten
+
+If ($InstallNosergroupDefaultModules) {
+	Log 1 'Installation der Standard-Komponenten fuer Geraete der Nosergruppe:' -ForegroundColor Green
+} Else {
+	Log 1 'Installation von individuellen Komponenten:' -ForegroundColor Green
+}
+Log 2 "$($eSelectedModules -Join ', ')"
 
 
 # Die Module installieren
