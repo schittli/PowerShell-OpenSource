@@ -580,7 +580,7 @@ if (!(Is-Elevated)) {
 	Write-Host ">> starte PowerShell als Administrator (Elevated)`n`n" -ForegroundColor Red
 	Start-Sleep -Seconds 4
 
-	$Command = "Invoke-Expression -Command (Invoke-RestMethod -Uri `"$ThisScriptPermaLink`")"
+	$Command = "[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; Invoke-Expression -Command (Invoke-RestMethod -Uri `"$ThisScriptPermaLink`")"
 	
 	If ($NoExit) {
 		Start-Process PowerShell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -NoExit -Command $Command"
