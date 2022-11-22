@@ -713,6 +713,7 @@ If ($CiscoNAM) {
 
 
 If ($NoExit -eq $False) {
-	Write-Host ' Das Fenster wird sich in 5s selber schliessen' -ForegroundColor Gray
+	Write-Host "`n`n`n"
+	Write-Host 'Das Fenster wird sich in 5s selber schliessen' -ForegroundColor Gray
 	Start-Sleep -Milliseconds 5000
 }
