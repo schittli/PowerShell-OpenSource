@@ -601,15 +601,32 @@ if (!(Is-Elevated)) {
 
 	# $Command = "[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; Invoke-Expression (Invoke-RestMethod -Uri `"$ThisScriptPermaLink`") $InvocationAllArgs"
 	# $Command = ('[Net.ServicePointManager]::SecurityProtocol = ''Tls12''; Invoke-Expression " &{{ $(Invoke-RestMethod -Uri "{0}") }} {1}"' -f $ThisScriptPermaLink, ($InvocationAllArgs -join ' '))
-	$Command = ('[Net.ServicePointManager]::SecurityProtocol = ''Tls12''; Invoke-Expression ""&{{ $(Invoke-RestMethod -Uri ''{0}'') }} {1}""' -f $ThisScriptPermaLink, ($InvocationAllArgs -join ' '))
 
-	Write-Host $Command -ForegroundColor Magenta
+	# $Command = ('[Net.ServicePointManager]::SecurityProtocol = ''Tls12''; Invoke-Expression ""&{{ $(Invoke-RestMethod -Uri ''{0}'') }} {1}""' -f $ThisScriptPermaLink, ($InvocationAllArgs -join ' '))
 
+	# 221123 181416
+	$InvokeScriptCmd = ('[Net.ServicePointManager]::SecurityProtocol = ''Tls12''; Invoke-Expression ""&{{ $(Invoke-RestMethod -Uri ''{0}'') }} {1}""' -f $ThisScriptPermaLink, ($InvocationAllArgs -join ' '))
+
+
+	$BasicPSSetting = '-ExecutionPolicy Bypass '
 	If ($NoExit) {
-		Start-Process PowerShell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -NoExit -Command $Command"
-	} Else {
-		Start-Process PowerShell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -Command $Command"
-	}
+		$BasicPSSetting += '-NoExit '
+	}		
+
+	$Cmd = "-Command CD 'C:\Temp'; $InvokeScriptCmd"
+	
+	$AllCmds = $BasicPSSetting + $Cmd
+
+	Write-Host $AllCmds -ForegroundColor Magenta
+
+	Start-Process PowerShell.exe -Verb RunAs $AllCmds
+
+	# If ($NoExit) {
+		# Start-Process PowerShell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -NoExit -Command $Command"
+	# } Else {
+		# Start-Process PowerShell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -Command $Command"
+	# }
+
 
 	If ($NoExit) {
 		Break Script
