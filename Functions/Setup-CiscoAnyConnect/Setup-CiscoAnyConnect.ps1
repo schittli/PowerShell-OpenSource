@@ -613,6 +613,7 @@ if (!(Is-Elevated)) {
 	## Den Scriptaufruf vorbereiten
 	# TLS 1.2 aktivieren
 	$InvokeScriptCmd = '[Net.ServicePointManager]::SecurityProtocol = `"Tls12`"; '
+	$InvokeScriptCmd += '[Net.ServicePointManager]::SecurityProtocol = ""Tls12""; '
 	# Invoke-Expression vorbereiten
 	$InvokeScriptCmd += 'Invoke-Expression -DisableKeepAlive " &{ $(Invoke-RestMethod -Uri ''' + $ThisScriptPermaLink + ''') } '
 	# Dem heruntergeladenen Script die Parameter mitgeben
