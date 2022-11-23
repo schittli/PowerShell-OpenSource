@@ -23,6 +23,9 @@
 #	Neu: -BinDlUrl
 # 004, 221123
 #	Neu: Das Script sucht automatisch die Cisco Setup Files, ohne Angabe der Versionsnummer
+# 005, 221123
+#	Autostart Shell elevated
+
 [CmdletBinding(SupportsShouldProcess, DefaultParameterSetName = 'SetupDefaultModules')]
 Param(
 	[Parameter(ParameterSetName = 'SetupDefaultModules')]
@@ -36,8 +39,24 @@ Param(
 )
 
 
+## Pre-Conditions
+# !Sj Autostart Shell elevated
+If ($PSVersionTable.PSVersion.Major -gt 5) {
+	Write-Host "`nDieses Script muss in PowerShell 5 gestartet werden" -ForegroundColor Red
+	Start-Sleep -MilliS 2500
+	Write-Host -NoNewLine "`nPress any key to continue…" -ForegroundColor Green
+	$null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+	Return
+}
+
+
 
 ## Config
+
+# Perma Link zum eigenen Script
+# !Sj Autostart Shell elevated
+$ThisScriptPermaLink = 'https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Setup-CiscoAnyConnect/Setup-CiscoAnyConnect.ps1'
+
 
 $Version = '1.0, 22.11.22'
 $Feedback = 'bitte an: schittli@akros.ch'
@@ -550,6 +569,61 @@ Function Get-CiscoModule-FullFilename() {
 
 
 
+## Prepare: Start Elevated
+# !Sj Autostart Shell elevated
+
+# True, wenn Elevated
+# 220813
+Function Is-Elevated() {
+	([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] 'Administrator')
+}
+
+
+# !Sj Autostart Shell elevated
+if (!(Is-Elevated)) {
+	Write-Host ">> starte PowerShell als Administrator (Elevated)`n`n" -ForegroundColor Red
+	Start-Sleep -Seconds 4
+
+	## Script-Parameter der elevated session weitergeben
+	[String[]]$InvocationBoundParameters = $MyInvocation.BoundParameters.GetEnumerator() | ForEach-Object {
+		if ($_.Value -is [Switch]) { "-$($_.Key)" } else { "-$($_.Key)", "$($_.Value)" }
+	}
+	$InvocationUnboundArguments = $MyInvocation.UnboundArguments
+	$InvocationAllArgs = $InvocationBoundParameters + $InvocationUnboundArguments
+
+	$Command = "[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; Invoke-Expression -Command (Invoke-RestMethod -Uri `"$ThisScriptPermaLink`") $InvocationAllArgs"
+
+	If ($NoExit) {
+		Start-Process PowerShell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -NoExit -Command $Command"
+	} Else {
+		Start-Process PowerShell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -Command $Command"
+	}
+
+	# Exit from the current, unelevated, process
+	Start-Sleep -MilliS 2500
+	Exit
+
+} Else {
+	$Host.UI.RawUI.WindowTitle = $MyInvocation.MyCommand.Definition + ' (Elevated)'
+	$Host.UI.RawUI.BackgroundColor = 'DarkBlue'
+	Clear-Host
+	Log 0 'Pruefe, ob das Cisco Modul Network Access Manager (NAM) installiert ist'
+	Log 1 "Version: $Version" -ForegroundColor DarkGray
+	Log 1 "Rückmeldungen bitte an: $Feedback" -ForegroundColor DarkGray
+}
+
+
+# Assert is elevated
+If ( (Is-Elevated) -eq $False) {
+	Write-Host "`nDas Script muss als Administrator / Elevated ausgeführt werden" -ForegroundColor Red
+	Start-Sleep -MilliS 3500
+	Write-Host -NoNewLine "`nPress any key to continue…" -ForegroundColor Green
+	$null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+	Return
+}
+
+
+
 ### Prepare
 
 $LocalBinDir = Join-Path $ScriptDir 'Bin'
@@ -630,11 +704,11 @@ Switch ($CiscoVersions.Count) {
 ## Installation starten
 
 If ($InstallNosergroupDefaultModules) {
-	Log 1 'Installation der Standard-Komponenten fuer Geraete der Nosergruppe:' -ForegroundColor Green
+	Log 0 'Installation der Standard-Komponenten fuer Geraete der Nosergruppe:' -ForegroundColor Green
 } Else {
-	Log 1 'Installation von individuellen Komponenten:' -ForegroundColor Green
+	Log 0 'Installation von individuellen Komponenten:' -ForegroundColor Green
 }
-Log 2 "$($eSelectedModules -Join ', ')"
+Log 1 "$($eSelectedModules -Join ', ')"
 
 
 # Die Module installieren
