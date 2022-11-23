@@ -617,7 +617,7 @@ if (!(Is-Elevated)) {
 	$InvokeScriptCmd += 'Invoke-Expression '' &{ $(Invoke-RestMethod -Uri ''' + $ThisScriptPermaLink + ''') } '
 	# Dem heruntergeladenen Script die Parameter mitgeben
 	$InvokeScriptCmd += ($InvocationAllArgs -join ' ')
-	$InvokeScriptCmd += ' "'
+	$InvokeScriptCmd += "'"
 
 	## Die Config der neuen PS Session
 	$BasicPSSetting = '-ExecutionPolicy Bypass '
