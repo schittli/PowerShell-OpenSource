@@ -593,7 +593,17 @@ if (!(Is-Elevated)) {
 	$InvocationUnboundArguments = $MyInvocation.UnboundArguments
 	$InvocationAllArgs = $InvocationBoundParameters + $InvocationUnboundArguments
 
-	$Command = "[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; Invoke-Expression -Command (Invoke-RestMethod -Uri `"$ThisScriptPermaLink`") $InvocationAllArgs"
+	$CommandOri = "[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; Invoke-Expression -Command (Invoke-RestMethod -Uri `"$ThisScriptPermaLink`") $InvocationAllArgs"
+
+	# [Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm 'https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Setup-CiscoAnyConnect/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb -NoExit"
+	# [Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm 'https://github.com/...//Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb -NoExit"
+	# [Net.ServicePointManager]::SecurityProtocol = 'Tls12'; Invoke-Expression -Command (Invoke-RestMethod -Uri "https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Setup-CiscoAnyConnect/Setup-CiscoAnyConnect.ps1") -InstallNosergroupDefaultModules
+
+	# $Command = "[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; Invoke-Expression (Invoke-RestMethod -Uri `"$ThisScriptPermaLink`") $InvocationAllArgs"
+	# $Command = ('[Net.ServicePointManager]::SecurityProtocol = ''Tls12''; Invoke-Expression " &{{ $(Invoke-RestMethod -Uri "{0}") }} {1}"' -f $ThisScriptPermaLink, ($InvocationAllArgs -join ' '))
+	$Command = ('[Net.ServicePointManager]::SecurityProtocol = ''Tls12''; Invoke-Expression "&{{ $(Invoke-RestMethod -Uri ''{0}'') }} {1}"' -f $ThisScriptPermaLink, ($InvocationAllArgs -join ' '))
+
+	Write-Host $Command -ForegroundColor Magenta
 
 	If ($NoExit) {
 		Start-Process PowerShell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -NoExit -Command $Command"
@@ -603,7 +613,7 @@ if (!(Is-Elevated)) {
 
 	# Exit from the current, unelevated, process
 	Start-Sleep -Milliseconds 2500
-	Exit
+	# Exit
 
 } Else {
 	$Host.UI.RawUI.WindowTitle = $MyInvocation.MyCommand.Definition + ' (Elevated)'
