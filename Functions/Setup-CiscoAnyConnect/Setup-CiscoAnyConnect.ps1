@@ -21,6 +21,8 @@
 # 002, 221109
 # 003, 221122
 #	Neu: -BinDlUrl
+# 004, 221123
+#	Neu: Das Script sucht automatisch die Cisco Setup Files, ohne Angabe der Versionsnummer
 
 
 [CmdletBinding(SupportsShouldProcess, DefaultParameterSetName = 'SetupDefaultModules')]
@@ -46,11 +48,6 @@ $CiscoSetupFileTypes = @('.msi$', '.zip$')
 
 # Die Standardmodule, die in der Nosergruppe installiert werden
 $NosergroupDefaultModules = @('VPN', 'AMPEnabler', 'Umbrella', 'ISEPosture', 'DART')
-
-## Konfiguration der MSI Setup Parameter
-$MsiFilenamePrefix = 'anyconnect-win-'
-$MsiFilenameDelimiter = '-'
-$SetupExt = '.msi'
 
 If ($MyInvocation.MyCommand.Path -eq $null) {
 	$ScriptDir = Get-Location
