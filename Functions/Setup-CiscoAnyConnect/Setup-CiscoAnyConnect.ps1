@@ -7,6 +7,11 @@
 # Getting started:
 # https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell/ReadMe.html
 #
+#
+# Siehe auch:
+#	\\akros.ch\SysVol\akros.ch\Policies\{EDD17C50-96F6-49C3-A8AC-A499448DFD51}\User\Scripts\Logon\Update-CiscoAnyConnect.cmd
+#
+#
 # !Ex
 # 	# 1. PowerShell öffnen (wechselt selber in den elevated Mode)
 # 	# 2. Ausführen: (mit copy & paste!)
