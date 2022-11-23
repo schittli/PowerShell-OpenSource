@@ -1,12 +1,12 @@
-# Installiert von Cisco AnyConnect die Standards-Komponenten 
+# Installiert von Cisco AnyConnect die Standards-Komponenten
 # für Geräte der Nosergruppe (Siehe: $NosergroupDefaultModules)
-# 
+#
 # Bei Bedarf ist das Script vorbereitet, um gezielt einzelne Module zu installieren
 # (nicht getestet)
-# 
+#
 # Getting started:
 # https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell/ReadMe.html
-# 
+#
 # !Ex
 # 	# 1. PowerShell als Administrator öffnen
 # 	# 2. Ausführen: (mit copy & paste!)
@@ -14,23 +14,21 @@
 #
 # 	# Variante mit -WhatIf:
 #		[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm 'https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb -WhatIf"
-# 
-# 
-# 
+#
+#
+#
 # 001, 221109, Tom
 # 002, 221109
 # 003, 221122
 #	Neu: -BinDlUrl
 # 004, 221123
 #	Neu: Das Script sucht automatisch die Cisco Setup Files, ohne Angabe der Versionsnummer
-
-
 [CmdletBinding(SupportsShouldProcess, DefaultParameterSetName = 'SetupDefaultModules')]
 Param(
 	[Parameter(ParameterSetName = 'SetupDefaultModules')]
 	[Switch]$InstallNosergroupDefaultModules,
 	[Parameter(ParameterSetName = 'SetupIndividualModules')]
-	[ValidateSet(IgnoreCase, 'VPN', 'SBL', 'DART', 'NAM', 'Umbrella', 'Posture', 'ISEPosture', 'AMPEnabler', 'NVM')]  
+	[ValidateSet(IgnoreCase, 'VPN', 'SBL', 'DART', 'NAM', 'Umbrella', 'Posture', 'ISEPosture', 'AMPEnabler', 'NVM')]
 	[String[]]$CiscoModules,
 	[Switch]$InstallFromWeb,
 	# Die Url zum Bin-Verzeichnis mit den Msi Files
@@ -44,7 +42,7 @@ Param(
 $Version = '1.0, 22.11.22'
 $Feedback = 'bitte an: schittli@akros.ch'
 
-$CiscoSetupFileTypes = @('.msi$', '.zip$')
+$CiscoSetupFileTypes = @('.msi$')
 
 # Die Standardmodule, die in der Nosergruppe installiert werden
 $NosergroupDefaultModules = @('VPN', 'AMPEnabler', 'Umbrella', 'ISEPosture', 'DART')
@@ -346,7 +344,7 @@ Function Is-WhatIf() {
 
 
 # Extrahiert aus dem Cisco zip / exe Dateinamen die Versions-Information
-# 
+#
 # !Ex
 # 	Get-CiscoSetupFilename-VersionInfo 'anyconnect-win-4.10.05111-predeploy-k9 - Noser Setup.exe'
 # 	Get-CiscoSetupFilename-VersionInfo 'anyconnect-win-4.10.05111-predeploy-k9 - Original Cisco.zip'
@@ -365,7 +363,7 @@ Function Get-Web-Filelisting() {
 		# e.g. @('.msi$', '.zip$')
 		[Parameter(Mandatory)][String[]]$FileTypes
 	)
-	
+
 	$Files = Invoke-WebRequest $Url -UseBasicParsing
 	If ($Files) {
 		$Res = @()
@@ -392,13 +390,12 @@ Function Get-Filelisting() {
 		# e.g. @('.msi$', '.zip$')
 		[Parameter(Mandatory)][String[]]$FileTypes
 	)
-	
+
 	$Files = Get-ChildItem -LiteralPath $LocalDir
 	If ($Files) {
 		$Res = @()
 		ForEach ($File in $Files) {
 			If ($File.Name -Match ($FileTypes -join '|')) {
-				$Res += $File.Name
 				$Res += [PSCustomObject][Ordered] @{
 					FullName = $File.FullName
 					Filename = $File.Name
@@ -415,7 +412,7 @@ Function Get-Filelisting() {
 # Liest von einem Webverzeichnis wie
 # 	https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell/Bin/
 # alle Files und extrahiert die Cisco-Version
-# 
+#
 # !Ex
 # 	$CiscoVersions, $Files = Get-Webfiles-CiscoVersions -Url $BinDlUrl -FileTypes $CiscoSetupFileTypes
 Function Get-Webfiles-CiscoVersions() {
@@ -424,40 +421,26 @@ Function Get-Webfiles-CiscoVersions() {
 		# e.g. @('.msi$', '.zip$')
 		[Parameter(Mandatory)][String[]]$FileTypes
 	)
-	
+
 	$Files = Get-Web-Filelisting -Url $Url -FileTypes $FileTypes
-	If ($Files) {
-		$Files = Array-ToObj -Items $Files
-		ForEach ($Filename in $Files) {
-			$FileVersion = Get-CiscoSetupFilename-VersionInfo $Filename
-			$Filename | Add-Member -MemberType NoteProperty -Name oVersion -Value $FileVersion
-		}
-	}
-	Return @( @($Files | select oVersion -Unique), $Files)
+	Return @( @($Files | select oCiscoVersion -Unique), $Files)
 }
 
 
 # Liest von einem lokalen Verzeichnis wie
 # alle Files und extrahiert die Cisco-Version
-# 
+#
 # !Ex
-# 	$CiscoVersions, $Files = Get-Webfiles-CiscoVersions -Url $BinDlUrl -FileTypes $CiscoSetupFileTypes
+# 	$CiscoVersions, $Files = Get-Files-CiscoVersions -LocalDir ...
 Function Get-Files-CiscoVersions() {
 	Param(
 		[Parameter(Mandatory)][String]$LocalDir,
 		# e.g. @('.msi$', '.zip$')
 		[Parameter(Mandatory)][String[]]$FileTypes
 	)
-	
+
 	$Files = Get-Filelisting -LocalDir $LocalDir -FileTypes $FileTypes
-	If ($Files) {
-		$Files = Array-ToObj -Items $Files
-		ForEach ($File in $Files) {
-			$FileVersion = Get-CiscoSetupFilename-VersionInfo $File.Name
-			$File | Add-Member -MemberType NoteProperty -Name oVersion -Value $FileVersion
-		}
-	}
-	Return @( @($Files | select oVersion -Unique), $Files)
+	Return @( @($Files | select oCiscoVersion -Unique), $Files)
 }
 
 
@@ -470,7 +453,7 @@ Function Get-File-FromWeb() {
 		[Parameter(Mandatory)]
 		[String]$TempDir
 	)
-	
+
 	# Das MSI vom Web holen
 	$DlFilename = Join-Path $TempDir ([IO.Path]::GetFileName( $FileUrl ))
 	# Download
@@ -495,10 +478,10 @@ Function Get-MsiFile() {
 		[Parameter(Mandatory)]
 		[String]$LocalBinDir
 	)
-	
+
 	# Das MSI lokal suchen
 	$MatchingMsiFiles = @(Get-ChildItem -LiteralPath $LocalBinDir -Filter $MsiExeFileName)
-	
+
 	Switch($MatchingMsiFiles.Count) {
 		0 {
 			Log 4 'MSI nicht gefunden:' -ForegroundColor Red
@@ -506,12 +489,12 @@ Function Get-MsiFile() {
 			Log 5 "File       : $($MsiExeFileName)" -ForegroundColor White
 			Return $Null
 		}
-		
+
 		1 {
 			$ThisMsiFilename = $MatchingMsiFiles[0].FullName
 			Return $ThisMsiFilename
 		}
-		
+
 		Default {
 			Log 4 'Mehrere MSI gefunden:' -ForegroundColor Red
 			Log 5 "Verzeichnis: $($LocalBinDir)" -ForegroundColor White
@@ -535,16 +518,16 @@ Function Start-CiscoAnyConnectExe() {
 
 # Sucht in der Liste der Files der Webseite
 # dieses msi, das zum Cisco Modul passt
-Function Get-CiscoModule-Filename() {
+Function Get-CiscoModule-FullFilename() {
 	Param(
 		[Parameter(Mandatory)]
 		[eCiscoModule]$eCiscoModule,
 		[Parameter(Mandatory)]
 		[Object[]]$WebSiteFilenames
 	)
-	
-	$ModuleFiles = @($WebSiteFilenames | ? Item  -like "*$($SetupCfg[ $eCiscoModule ].MsiName)*" | select -ExpandProperty Item)
-	
+
+	$ModuleFiles = @($WebSiteFilenames | ? Filename  -like "*$($SetupCfg[ $eCiscoModule ].MsiName)*" | select -ExpandProperty FullName)
+
 	Switch ($ModuleFiles.Count) {
 		0 {
 			Log 4 "Kein Cisco Setup File gefunden fuer: $eCiscoModule" -ForegroundColor Red
@@ -628,16 +611,16 @@ Switch ($CiscoVersions.Count) {
 	}
 	1 {
 		# OK!
-		Log 2 "Gefunden: $($CiscoVersions[0])"
+		Log 2 "Gefunden: $($CiscoVersions | Select -ExpandProperty oCiscoVersion)"
 	}
 	Default {
 		Log 0 'Mehrere Cisco Setup-File Versionen gefunden auf:' -ForegroundColor Red
 		Log 1 "$BinDlUrl" -ForegroundColor White
-		
+
 		$CiscoVersions | % {
 			Log 2 $_.oVersion
 		}
-		
+
 		Log 0 'Abbruch' -ForegroundColor Red
 		Break Script
 	}
@@ -661,37 +644,33 @@ $Cnt = 1
 ForEach($eSelectedModule in $eSelectedModules) {
 	$ThisModuleCfg = $SetupCfg[$eSelectedModule]
 	Log 2 ("Installiere {0}/{1}: {2}" -f ($Cnt++), $Anz, $ThisModuleCfg.Name) -ForegroundColor Yellow
-	
+
 	# In der Dateiliste das richtige msi suchen
-	$SetupFileName = Get-CiscoModule-Filename -eCiscoModule $eSelectedModule -WebSiteFilenames $CiscoSetupFiles
-	
-	Log 0 '$SetupFileName'
-	Write-Host ($SetupFileName | select * | Out-String)
-	
+	$SetupFullFileName = Get-CiscoModule-FullFilename -eCiscoModule $eSelectedModule -WebSiteFilenames $CiscoSetupFiles
+
 	# Allenfalls das Setup herunterladen
 	If ($InstallFromWeb) {
-		$ThisMsiFilename = Get-File-FromWeb -FileUrl $SetupFileName.Fullname -TempDir $TempDir
+		$ThisMsiFilename = Get-File-FromWeb -FileUrl $SetupFullFileName -TempDir $TempDir
 	} Else {
-		$ThisMsiFilename = $SetupFileName.FullName
+		$ThisMsiFilename = $SetupFullFileName
 	}
-	
+
 	# Wenn wir ein MSI File haben
 	If ($ThisMsiFilename) {
 		# Die MSI Parameter vorbereiten
 		$ThisMsiParams = $ThisModuleCfg.MsiParams -Split ' '
-		
+
 		# Setup starten
 		If (Is-WhatIf) {
 			Log 2 'WhatIf:'
 			Log 3 "Start-Process -Wait -FilePath $ThisMsiFilename -ArgumentList $($ThisMsiParams -Join ',')"
 		} Else {
 			# Start-Process -Wait -FilePath 'C:\Windows\system32\msiexec.exe' -ArgumentList @('/i', " `"$CiscoSetupMSI`"", '/passive')
-			
 			Start-Process -Wait -FilePath $ThisMsiFilename -ArgumentList $ThisMsiParams
 		}
-		
+
 	}
 }
-	
+
 Log 0 'Starte Cisco AnyConnect' -ForegroundColor Yellow -NewLineBefore
 Start-CiscoAnyConnectExe
