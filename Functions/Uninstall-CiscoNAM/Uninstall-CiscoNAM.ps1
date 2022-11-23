@@ -2,6 +2,10 @@
 # Aktualisiert wenn nötig die anderen Cisco Module
 # 
 # 
+# Siehe: 
+# 	\\akros.ch\SysVol\akros.ch\Policies\{EDD17C50-96F6-49C3-A8AC-A499448DFD51}\User\Scripts\Logon\Uninstall-CiscoAnyConnect-NAM.cmd
+# 
+# 
 # !Ex
 # 	# In PowerShell ausführen, das Script startet sich automatisch elevated:
 # 	[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm 'https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Uninstall-CiscoNAM/Uninstall-CiscoNAM.ps1') }"
@@ -9,6 +13,7 @@
 # 
 # 
 # 001, 221122
+#	Autostart Shell elevated
 
 [CmdletBinding(SupportsShouldProcess)]
 Param (
@@ -20,6 +25,7 @@ Param (
 
 
 ## Pre-Conditions
+# !Sj Autostart Shell elevated
 If ($PSVersionTable.PSVersion.Major -gt 5) {
 	Write-Host "`nDieses Script muss in PowerShell 5 gestartet werden" -ForegroundColor Red
 	Start-Sleep -MilliS 2500
@@ -37,6 +43,7 @@ $Version = '1.0, 22.11.22'
 $Feedback = 'bitte an: schittli@akros.ch'
 
 # Perma Link zum eigenen Script
+# !Sj Autostart Shell elevated
 $ThisScriptPermaLink = 'https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Uninstall-CiscoNAM/Uninstall-CiscoNAM.ps1'
 
 
@@ -564,43 +571,6 @@ Function Get-CiscoSW-ToUninstall([String[]]$Property, [String[]]$IncludeProgram 
 }
 
 
-# True, wenn Elevated
-# 220813
-Function Is-Elevated() {
-	([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] 'Administrator')
-}
-
-
-
-## Prepare
-
-# Start Elevated
-if (!(Is-Elevated)) {
-	Write-Host ">> starte PowerShell als Administrator (Elevated)`n`n" -ForegroundColor Red
-	Start-Sleep -Seconds 4
-
-	$Command = "[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; Invoke-Expression -Command (Invoke-RestMethod -Uri `"$ThisScriptPermaLink`")"
-	
-	If ($NoExit) {
-		Start-Process PowerShell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -NoExit -Command $Command"
-	} Else {
-		Start-Process PowerShell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -Command $Command"
-	}
-
-	# Exit from the current, unelevated, process
-	Start-Sleep -MilliS 2500
-	Exit
-	
-} Else {
-	$Host.UI.RawUI.WindowTitle = $MyInvocation.MyCommand.Definition + ' (Elevated)'
-	$Host.UI.RawUI.BackgroundColor = 'DarkBlue'
-	Clear-Host
-	Log 0 'Pruefe, ob das Cisco Modul Network Access Manager (NAM) installiert ist'
-	Log 1 "Version: $Version" -ForegroundColor DarkGray
-	Log 1 "Rückmeldungen bitte an: $Feedback" -ForegroundColor DarkGray
-}
-
-
 # Stellt sicher, 
 # - dass MSI-Uninstall-Strings nicht als App-Install/Konfig-Strings ausgeführt werden
 # - dass ein Reboot wann immer möglich unterdrückt wird
@@ -643,6 +613,43 @@ Function Uninstall-Software-By-UninstallString() {
 }
 
 
+## Prepare: Start Elevated
+
+# True, wenn Elevated
+# !Sj Autostart Shell elevated
+# 220813
+Function Is-Elevated() {
+	([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] 'Administrator')
+}
+
+# !Sj Autostart Shell elevated
+if (!(Is-Elevated)) {
+	Write-Host ">> starte PowerShell als Administrator (Elevated)`n`n" -ForegroundColor Red
+	Start-Sleep -Seconds 4
+
+	$Command = "[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; Invoke-Expression -Command (Invoke-RestMethod -Uri `"$ThisScriptPermaLink`")"
+	
+	If ($NoExit) {
+		Start-Process PowerShell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -NoExit -Command $Command"
+	} Else {
+		Start-Process PowerShell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -Command $Command"
+	}
+
+	# Exit from the current, unelevated, process
+	Start-Sleep -MilliS 2500
+	Exit
+	
+} Else {
+	$Host.UI.RawUI.WindowTitle = $MyInvocation.MyCommand.Definition + ' (Elevated)'
+	$Host.UI.RawUI.BackgroundColor = 'DarkBlue'
+	Clear-Host
+	Log 0 'Pruefe, ob das Cisco Modul Network Access Manager (NAM) installiert ist'
+	Log 1 "Version: $Version" -ForegroundColor DarkGray
+	Log 1 "Rückmeldungen bitte an: $Feedback" -ForegroundColor DarkGray
+}
+
+
+# Assert is elevated
 If ( (Is-Elevated) -eq $False) {
 	Write-Host "`nDas Script muss als Administrator / Elevated ausgeführt werden" -ForegroundColor Red
 	Start-Sleep -MilliS 3500
@@ -651,6 +658,9 @@ If ( (Is-Elevated) -eq $False) {
 	Return
 }
 
+
+
+## Prepare
 
 
 ## Main
