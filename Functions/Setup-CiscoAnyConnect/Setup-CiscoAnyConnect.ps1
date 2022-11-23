@@ -8,13 +8,15 @@
 # https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell/ReadMe.html
 #
 # !Ex
-# 	# 1. PowerShell als Administrator öffnen
+# 	# 1. PowerShell öffnen (wechselt selber in den elevated Mode)
 # 	# 2. Ausführen: (mit copy & paste!)
-#		[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm 'https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb"
+#		[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm -DisableKeepAlive 'https://www.akros.ch/it/Cisco/Test/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb"
+#
+# 	# Variante mit -ShowDebugInfos:
+#		[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm -DisableKeepAlive 'https://www.akros.ch/it/Cisco/Test/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb -ShowDebugInfos"
 #
 # 	# Variante mit -WhatIf:
-#		[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm 'https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb -WhatIf"
-#
+#		[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm -DisableKeepAlive 'https://www.akros.ch/it/Cisco/Test/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb -WhatIf"
 #
 #
 # 001, 221109, Tom
@@ -33,11 +35,12 @@ Param(
 	[Parameter(ParameterSetName = 'SetupIndividualModules')]
 	[ValidateSet(IgnoreCase, 'VPN', 'SBL', 'DART', 'NAM', 'Umbrella', 'Posture', 'ISEPosture', 'AMPEnabler', 'NVM')]
 	[String[]]$CiscoModules,
+	# Wenn -InstallFromWeb nicht angegeben wird:
+	# Setup der msi vom <ScriptDir>\Bin
 	[Switch]$InstallFromWeb,
 	# Die Url zum Bin-Verzeichnis mit den Msi Files
 	[String]$BinDlUrl = 'https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell/Bin',
-	# Die elevated Shell nicht schliessen
-	[Switch]$NoExit,
+	# Die elevated Shell nicht schliessen & Debug-Infos anzeigen
 	[Switch]$ShowDebugInfos
 )
 
@@ -59,7 +62,6 @@ If ($PSVersionTable.PSVersion.Major -gt 5) {
 # Perma Link zum eigenen Script
 # !Sj Autostart Shell elevated
 $ThisScriptPermaLink = 'https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Setup-CiscoAnyConnect/Setup-CiscoAnyConnect.ps1'
-$ThisScriptPermaLink = 'https://www.akros.ch/it/Cisco/Test/Setup-CiscoAnyConnect.ps1'
 
 
 $Version = '1.0, 22.11.22'
@@ -587,7 +589,7 @@ Function Is-Elevated() {
 if (!(Is-Elevated)) {
 	Write-Host ">> starte PowerShell als Administrator (Elevated)`n`n" -ForegroundColor Red
 	# Beim Testen kein Sleep
-	If ($NoExit -eq $False) { Start-Sleep -Seconds 4 }
+	If ($ShowDebugInfos -eq $False) { Start-Sleep -Seconds 4 }
 
 	## Script-Parameter der elevated session weitergeben
 	[String[]]$InvocationBoundParameters = $MyInvocation.BoundParameters.GetEnumerator() | ForEach-Object {
@@ -621,7 +623,8 @@ if (!(Is-Elevated)) {
 
 	## Die Config der neuen PS Session
 	$BasicPSSetting = '-ExecutionPolicy Bypass '
-	If ($NoExit) {
+	If ($ShowDebugInfos) {
+		# Elevated Shell schliessen
 		$BasicPSSetting += '-NoExit '
 	}
 
@@ -635,10 +638,11 @@ if (!(Is-Elevated)) {
 
 	Start-Process PowerShell.exe -Verb RunAs $AllCmds
 
-	If ($NoExit) {
+	If ($ShowDebugInfos) {
+		# Aktuelle Shell nicht schliessen
 		Break Script
 	} Else {
-		# Exit from the current, unelevated, process
+		# Aktuelle Shell schliessen
 		Start-Sleep -Milliseconds 2500
 		Exit
 	}
