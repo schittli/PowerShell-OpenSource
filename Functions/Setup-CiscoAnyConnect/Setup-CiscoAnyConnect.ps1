@@ -627,6 +627,7 @@ Switch ($CiscoVersions.Count) {
 	}
 	1 {
 		# OK!
+		Log 2 "Gefunden: $($CiscoVersions[0])"
 	}
 	Default {
 		Log 0 'Mehrere Cisco Setup-File Versionen gefunden auf:' -ForegroundColor Red
