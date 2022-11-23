@@ -634,6 +634,7 @@ if (!(Is-Elevated)) {
 	# Start-Process: "" erzeugt: ••
 	# $InvokeScriptCmd += '[Net.ServicePointManager]::SecurityProtocol = ""Tls12""; '
 
+	# !KH9^9 TomTom: Start-Process muss ein '"' als dreifaches '"""' Übergeben werden!, sonst wird es rausgefiltert!
 	# Start-Process: """ erzeugt: •"•
 	$InvokeScriptCmd += '[Net.ServicePointManager]::SecurityProtocol = """Tls12"""; '
 
