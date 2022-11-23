@@ -463,23 +463,23 @@ Function Get-Files-CiscoVersions() {
 
 
 # Holt eine Msi-Datei vom Web
-Function Get-MsiFile-FromWeb() {
+Function Get-File-FromWeb() {
 	Param(
 		[Parameter(Mandatory)]
-		[String]$MsiUrl,
+		[String]$FileUrl,
 		[Parameter(Mandatory)]
 		[String]$TempDir
 	)
 	
 	# Das MSI vom Web holen
-	$DlFilename = Join-Path $TempDir ([IO.Path]::GetFileName( $MsiUrl ))
+	$DlFilename = Join-Path $TempDir ([IO.Path]::GetFileName( $FileUrl ))
 	# Download
-	$Res = Invoke-WebRequest -URI $MsiUrl -OutFile $DlFilename -PassThru
+	$Res = Invoke-WebRequest -URI $FileUrl -OutFile $DlFilename -PassThru
 	If ($Res.StatusCode -eq 200) {
 		Return $DlFilename
 	} Else {
 		Log 4 'Fehler beim Download von:' -ForegroundColor Red
-		Log 4 ('{0}' -f $MsiUrl)
+		Log 4 ('{0}' -f $FileUrl)
 		Return $Null
 	}
 }
@@ -667,7 +667,7 @@ ForEach($eSelectedModule in $eSelectedModules) {
 	
 	# Allenfalls das Setup herunterladen
 	If ($InstallFromWeb) {
-		$ThisMsiFilename = Get-MsiFile-FromWeb -BinDlUrl $BinDlUrl -TempDir $TempDir
+		$ThisMsiFilename = Get-File-FromWeb -FileUrl $SetupFileName.Fullname -TempDir $TempDir
 	} Else {
 		$ThisMsiFilename = $SetupFileName.FullName
 	}
