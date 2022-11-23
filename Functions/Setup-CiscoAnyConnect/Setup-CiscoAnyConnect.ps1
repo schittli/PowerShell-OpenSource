@@ -58,6 +58,7 @@ If ($PSVersionTable.PSVersion.Major -gt 5) {
 # Perma Link zum eigenen Script
 # !Sj Autostart Shell elevated
 $ThisScriptPermaLink = 'https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Setup-CiscoAnyConnect/Setup-CiscoAnyConnect.ps1'
+$ThisScriptPermaLink = 'https://www.akros.ch/it/Cisco/Test/Setup-CiscoAnyConnect.ps1'
 
 
 $Version = '1.0, 22.11.22'
@@ -254,7 +255,7 @@ Function Log() {
             $ForegroundColor = $Script:LogColors[$Indent]
          }
          Catch {
-            Write-Host "Ungültige Farbe: $($Script:LogColors[$Indent])" -ForegroundColor Red
+            Write-Host "Ungueltige Farbe: $($Script:LogColors[$Indent])" -ForegroundColor Red
          }
       }
       If ($null -eq $ForegroundColor) {
@@ -613,15 +614,34 @@ if (!(Is-Elevated)) {
 
 	## Den Scriptaufruf vorbereiten
 	# TLS 1.2 aktivieren
-	$InvokeScriptCmd = '$X = $MyInvocation.Line; Write-Host $X;'
-	$InvokeScriptCmd += '[Net.ServicePointManager]::SecurityProtocol = `"Tls12`"; '
-	$InvokeScriptCmd += '$A=""1"";'
-	$InvokeScriptCmd += '$B=`"2`";'
+	$InvokeScriptCmd = 'Write-Host "";'
+	$InvokeScriptCmd += '$CommandLineArgs = [System.Environment]::GetCommandLineArgs();'
+	$InvokeScriptCmd += 'Write-Host "";'
+
+	# Die $CommandLineArgs als einzelne Elemente ausgeben
+	# $InvokeScriptCmd += 'Write-Host ''GetCommandLineArgs():'' -ForegroundColor Yellow;'
+	# $InvokeScriptCmd += '$CommandLineArgs | % { Write-Host $_ };'
+	$InvokeScriptCmd += 'Write-Host ''GetCommandLineArgs() -join:'' -ForegroundColor Yellow;'
+	$InvokeScriptCmd += 'Write-Host ($CommandLineArgs -join '' '') ;'
+	$InvokeScriptCmd += 'Write-Host "";'
+
+	# Start-Process: `" erzeugt: •`•
+	# $InvokeScriptCmd += '[Net.ServicePointManager]::SecurityProtocol = `"Tls12`"; '
+
+	# Start-Process: " erzeugt: ••
+	# $InvokeScriptCmd += '[Net.ServicePointManager]::SecurityProtocol = "Tls12"; '
+
+	# Start-Process: "" erzeugt: ••
+	# $InvokeScriptCmd += '[Net.ServicePointManager]::SecurityProtocol = ""Tls12""; '
+
+	# Start-Process: """ erzeugt: •"•
+	$InvokeScriptCmd += '[Net.ServicePointManager]::SecurityProtocol = """Tls12"""; '
+
 	# Invoke-Expression vorbereiten
-	$InvokeScriptCmd += '# Invoke-Expression " &{ $(Invoke-RestMethod -DisableKeepAlive -Uri ''' + $ThisScriptPermaLink + ''') } '
+	$InvokeScriptCmd += 'Invoke-Expression """ &{ $(Invoke-RestMethod -DisableKeepAlive -Uri ''' + $ThisScriptPermaLink + ''') } '
 	# Dem heruntergeladenen Script die Parameter mitgeben
 	$InvokeScriptCmd += ($InvocationAllArgs -join ' ')
-	$InvokeScriptCmd += '"'
+	$InvokeScriptCmd += '"""'
 
 	## Die Config der neuen PS Session
 	$BasicPSSetting = '-ExecutionPolicy Bypass '
@@ -629,7 +649,7 @@ if (!(Is-Elevated)) {
 		$BasicPSSetting += '-NoExit '
 	}
 
-	$MainCmd = "-Command CD 'C:\Temp'; '$InvokeScriptCmd'"
+	$MainCmd = "-Command CD 'C:\Temp'; $InvokeScriptCmd"
 
 	$AllCmds = $BasicPSSetting + $MainCmd
 
@@ -658,13 +678,13 @@ if (!(Is-Elevated)) {
 	Clear-Host
 	Log 0 'Pruefe, ob das Cisco Modul Network Access Manager (NAM) installiert ist'
 	Log 1 "Version: $Version" -ForegroundColor DarkGray
-	Log 1 "Rückmeldungen bitte an: $Feedback" -ForegroundColor DarkGray
+	Log 1 "Rueckmeldungen bitte an: $Feedback" -ForegroundColor DarkGray
 }
 
 
 # Assert is elevated
 If ( (Is-Elevated) -eq $False) {
-	Write-Host "`nDas Script muss als Administrator / Elevated ausgeführt werden" -ForegroundColor Red
+	Write-Host "`nDas Script muss als Administrator / Elevated ausgefuehrt werden" -ForegroundColor Red
 	Start-Sleep -Milliseconds 3500
 	Write-Host -NoNewLine "`nPress any key to continue…" -ForegroundColor Green
 	$null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
@@ -680,7 +700,7 @@ $TempDir = Get-TempDir
 
 Log 0 'Pruefe, ob Cisco AnyConnect aktualisiert werden muss'
 Log 1 "Version: $Version" -ForegroundColor DarkGray
-Log 1 "Rückmeldungen bitte an: $Feedback" -ForegroundColor DarkGray
+Log 1 "Rueckmeldungen bitte an: $Feedback" -ForegroundColor DarkGray
 
 # Aus den gewaehlten Modulen die Enum-Liste erstellen
 $eSelectedModules = @()
