@@ -612,7 +612,7 @@ Log 1 'Lese die Cisco-Version'
 If ($InstallFromWeb) {
 	$CiscoVersions, $CiscoSetupFiles = Get-Webfiles-CiscoVersions -Url $BinDlUrl -FileTypes $CiscoSetupFileTypes
 } Else {
-	$CiscoVersions, $CiscoSetupFiles = Get-Files-CiscoVersions -LocalDir $LocalBinDir -FileTypes $CiscoSetupFileTypes)
+	$CiscoVersions, $CiscoSetupFiles = Get-Files-CiscoVersions -LocalDir $LocalBinDir -FileTypes $CiscoSetupFileTypes
 }
 
 
