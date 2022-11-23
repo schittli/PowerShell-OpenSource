@@ -584,7 +584,8 @@ Function Is-Elevated() {
 # !Sj Autostart Shell elevated
 if (!(Is-Elevated)) {
 	Write-Host ">> starte PowerShell als Administrator (Elevated)`n`n" -ForegroundColor Red
-	Start-Sleep -Seconds 4
+	# Beim Testen kein Sleep
+	If ($NoExit -eq $False) { Start-Sleep -Seconds 4 }
 
 	## Script-Parameter der elevated session weitergeben
 	[String[]]$InvocationBoundParameters = $MyInvocation.BoundParameters.GetEnumerator() | ForEach-Object {
