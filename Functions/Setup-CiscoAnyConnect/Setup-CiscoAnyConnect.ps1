@@ -612,7 +612,8 @@ if (!(Is-Elevated)) {
 
 	## Den Scriptaufruf vorbereiten
 	# TLS 1.2 aktivieren
-	$InvokeScriptCmd = '[Net.ServicePointManager]::SecurityProtocol = `"Tls12`"; '
+	$InvokeScriptCmd = '$X = $MyInvocation.Line; Write-Host $X;'
+	$InvokeScriptCmd += '[Net.ServicePointManager]::SecurityProtocol = `"Tls12`"; '
 	$InvokeScriptCmd += '$A=""1"";'
 	$InvokeScriptCmd += '$B=`"2`";'
 	# Invoke-Expression vorbereiten
