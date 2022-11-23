@@ -622,7 +622,7 @@ if (!(Is-Elevated)) {
 	$InvokeScriptCmd += '"""'
 
 	## Die Config der neuen PS Session
-	$BasicPSSetting = '-ExecutionPolicy Bypass '
+	$BasicPSSetting = '-NoProfile -ExecutionPolicy Bypass '
 	If ($ShowDebugInfos) {
 		# Elevated Shell schliessen
 		$BasicPSSetting += '-NoExit '
