@@ -43,7 +43,7 @@ Param(
 # !Sj Autostart Shell elevated
 If ($PSVersionTable.PSVersion.Major -gt 5) {
 	Write-Host "`nDieses Script muss in PowerShell 5 gestartet werden" -ForegroundColor Red
-	Start-Sleep -MilliS 2500
+	Start-Sleep -Milliseconds 2500
 	Write-Host -NoNewLine "`nPress any key to continue…" -ForegroundColor Green
 	$null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
 	Return
@@ -600,7 +600,7 @@ if (!(Is-Elevated)) {
 	}
 
 	# Exit from the current, unelevated, process
-	Start-Sleep -MilliS 2500
+	Start-Sleep -Milliseconds 2500
 	Exit
 
 } Else {
@@ -616,7 +616,7 @@ if (!(Is-Elevated)) {
 # Assert is elevated
 If ( (Is-Elevated) -eq $False) {
 	Write-Host "`nDas Script muss als Administrator / Elevated ausgeführt werden" -ForegroundColor Red
-	Start-Sleep -MilliS 3500
+	Start-Sleep -Milliseconds 3500
 	Write-Host -NoNewLine "`nPress any key to continue…" -ForegroundColor Green
 	$null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
 	Return
