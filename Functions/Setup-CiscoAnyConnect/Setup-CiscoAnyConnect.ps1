@@ -37,7 +37,8 @@ Param(
 	# Die Url zum Bin-Verzeichnis mit den Msi Files
 	[String]$BinDlUrl = 'https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell/Bin',
 	# Die elevated Shell nicht schliessen
-	[Switch]$NoExit
+	[Switch]$NoExit,
+	[Switch]$ShowDebugInfos
 )
 
 
@@ -595,47 +596,21 @@ if (!(Is-Elevated)) {
 	$InvocationUnboundArguments = $MyInvocation.UnboundArguments
 	$InvocationAllArgs = $InvocationBoundParameters + $InvocationUnboundArguments
 
-	$CommandOri = "[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; Invoke-Expression -Command (Invoke-RestMethod -Uri `"$ThisScriptPermaLink`") $InvocationAllArgs"
+	$InvokeScriptCmd = ''
+	If ($ShowDebugInfos) {
+		$InvokeScriptCmd = 'Write-Host "";'
+		$InvokeScriptCmd += '$CommandLineArgs = [System.Environment]::GetCommandLineArgs();'
+		$InvokeScriptCmd += 'Write-Host "";'
 
-	# [Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm 'https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Setup-CiscoAnyConnect/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb -NoExit"
-	# [Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm 'https://github.com/...//Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb -NoExit"
-	# [Net.ServicePointManager]::SecurityProtocol = 'Tls12'; Invoke-Expression -Command (Invoke-RestMethod -Uri "https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Setup-CiscoAnyConnect/Setup-CiscoAnyConnect.ps1") -InstallNosergroupDefaultModules
+		$InvokeScriptCmd += 'Write-Host ''GetCommandLineArgs() -join:'' -ForegroundColor Yellow;'
+		$InvokeScriptCmd += 'Write-Host ($CommandLineArgs -join '' '') ;'
+		$InvokeScriptCmd += 'Write-Host "";'
+	}
 
-	# $Command = "[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; Invoke-Expression (Invoke-RestMethod -Uri `"$ThisScriptPermaLink`") $InvocationAllArgs"
-	# $Command = ('[Net.ServicePointManager]::SecurityProtocol = ''Tls12''; Invoke-Expression " &{{ $(Invoke-RestMethod -Uri "{0}") }} {1}"' -f $ThisScriptPermaLink, ($InvocationAllArgs -join ' '))
+	## !KH9^9 TomTom:
+	## Start-Process muss ein '"' als dreifaches '"""' Übergeben werden!, sonst wird es rausgefiltert!
 
-	# $Command = ('[Net.ServicePointManager]::SecurityProtocol = ''Tls12''; Invoke-Expression ""&{{ $(Invoke-RestMethod -Uri ''{0}'') }} {1}""' -f $ThisScriptPermaLink, ($InvocationAllArgs -join ' '))
-
-	# 221123 181416
-
-# [Net.ServicePointManager]::SecurityProtocol = 'Tls12';
-# iex "& { $(irm 'https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Setup-CiscoAnyConnect/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb -NoExit"
-
-
-	## Den Scriptaufruf vorbereiten
 	# TLS 1.2 aktivieren
-	$InvokeScriptCmd = 'Write-Host "";'
-	$InvokeScriptCmd += '$CommandLineArgs = [System.Environment]::GetCommandLineArgs();'
-	$InvokeScriptCmd += 'Write-Host "";'
-
-	# Die $CommandLineArgs als einzelne Elemente ausgeben
-	# $InvokeScriptCmd += 'Write-Host ''GetCommandLineArgs():'' -ForegroundColor Yellow;'
-	# $InvokeScriptCmd += '$CommandLineArgs | % { Write-Host $_ };'
-	$InvokeScriptCmd += 'Write-Host ''GetCommandLineArgs() -join:'' -ForegroundColor Yellow;'
-	$InvokeScriptCmd += 'Write-Host ($CommandLineArgs -join '' '') ;'
-	$InvokeScriptCmd += 'Write-Host "";'
-
-	# Start-Process: `" erzeugt: •`•
-	# $InvokeScriptCmd += '[Net.ServicePointManager]::SecurityProtocol = `"Tls12`"; '
-
-	# Start-Process: " erzeugt: ••
-	# $InvokeScriptCmd += '[Net.ServicePointManager]::SecurityProtocol = "Tls12"; '
-
-	# Start-Process: "" erzeugt: ••
-	# $InvokeScriptCmd += '[Net.ServicePointManager]::SecurityProtocol = ""Tls12""; '
-
-	# !KH9^9 TomTom: Start-Process muss ein '"' als dreifaches '"""' Übergeben werden!, sonst wird es rausgefiltert!
-	# Start-Process: """ erzeugt: •"•
 	$InvokeScriptCmd += '[Net.ServicePointManager]::SecurityProtocol = """Tls12"""; '
 
 	# Invoke-Expression vorbereiten
@@ -654,16 +629,11 @@ if (!(Is-Elevated)) {
 
 	$AllCmds = $BasicPSSetting + $MainCmd
 
-	Write-Host $AllCmds -ForegroundColor Magenta
+	If ($ShowDebugInfos) {
+		Write-Host $AllCmds -ForegroundColor Magenta
+	}
 
 	Start-Process PowerShell.exe -Verb RunAs $AllCmds
-
-	# If ($NoExit) {
-		# Start-Process PowerShell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -NoExit -Command $Command"
-	# } Else {
-		# Start-Process PowerShell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -Command $Command"
-	# }
-
 
 	If ($NoExit) {
 		Break Script
@@ -674,12 +644,10 @@ if (!(Is-Elevated)) {
 	}
 
 } Else {
+	# Wir sind elevated
 	$Host.UI.RawUI.WindowTitle = $MyInvocation.MyCommand.Definition + ' (Elevated)'
 	$Host.UI.RawUI.BackgroundColor = 'DarkBlue'
 	Clear-Host
-	Log 0 'Pruefe, ob das Cisco Modul Network Access Manager (NAM) installiert ist'
-	Log 1 "Version: $Version" -ForegroundColor DarkGray
-	Log 1 "Rueckmeldungen bitte an: $Feedback" -ForegroundColor DarkGray
 }
 
 
