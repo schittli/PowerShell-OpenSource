@@ -667,7 +667,7 @@ ForEach($eSelectedModule in $eSelectedModules) {
 	
 	# Allenfalls das Setup herunterladen
 	If ($InstallFromWeb) {
-		$ThisMsiFilename = Get-MsiFile-FromWeb -MsiExeFileName $SetupFileName -BinDlUrl $BinDlUrl -TempDir $TempDir
+		$ThisMsiFilename = Get-MsiFile-FromWeb -BinDlUrl $BinDlUrl -TempDir $TempDir
 	} Else {
 		$ThisMsiFilename = $SetupFileName.FullName
 	}
