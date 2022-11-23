@@ -352,7 +352,7 @@ Function Get-Web-Filelisting() {
 		$Res = @()
 		ForEach ($Link in $Files.Links) {
 			If ($Link.href -Match ($FileTypes -join '|')) {
-				$Res += [PSCustomObject][Ordered] = @{
+				$Res += [PSCustomObject][Ordered] @{
 					$FullName = (Join-URL $Url $Link.href)
 					$Filename = $Link.href
 					# Versuchen, die Versionsinfo zu bestimmen
@@ -380,7 +380,7 @@ Function Get-Filelisting() {
 		ForEach ($File in $Files) {
 			If ($File.Name -Match ($FileTypes -join '|')) {
 				$Res += $File.Name
-				$Res += [PSCustomObject][Ordered] = @{
+				$Res += [PSCustomObject][Ordered] @{
 					$FullName = $File.FullName
 					$Filename = $File.Name
 					# Versuchen, die Versionsinfo zu bestimmen
