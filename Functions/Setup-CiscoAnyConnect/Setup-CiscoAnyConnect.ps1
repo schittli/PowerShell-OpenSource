@@ -325,6 +325,25 @@ Function Array-ToObj() {
 }
 
 
+# Verbinded zwei URLs
+#
+# Wenn $Append = $True, dann wird $Realtive dem ganzen Root-Pfad zugefügt
+# Sonst wird Relative nur dem Host zugefügt
+Function Join-URL ($Root, $Relative, [Switch]$Append = $True) {
+	# Sicherstellen, dass am Ende kein Slash existiert
+	$Root = $Root.TrimEnd('/').TrimEnd('\')
+	# Wenn $Relative zum ganzen Root-Pfad zugefügt werden muss, benoetigt Root ein Slash
+	If ($Append) { $Root = $Root + '/' }
+	# https://msdn.microsoft.com/en-us/library/system.uri(v=vs.110).aspx
+	$RootUri = New-Object System.Uri($Root)
+	(New-Object System.Uri($RootUri, $Relative)).AbsoluteUri
+}
+
+
+Function Is-WhatIf() {
+	$WhatIfPreference
+}
+
 
 # Extrahiert aus dem Cisco zip / exe Dateinamen die Versions-Information
 # 
@@ -353,10 +372,10 @@ Function Get-Web-Filelisting() {
 		ForEach ($Link in $Files.Links) {
 			If ($Link.href -Match ($FileTypes -join '|')) {
 				$Res += [PSCustomObject][Ordered] @{
-					$FullName = (Join-URL $Url $Link.href)
-					$Filename = $Link.href
+					FullName = (Join-URL $Url $Link.href)
+					Filename = $Link.href
 					# Versuchen, die Versionsinfo zu bestimmen
-					$oCiscoVersion = (Get-CiscoSetupFilename-VersionInfo $Link.href)
+					oCiscoVersion = (Get-CiscoSetupFilename-VersionInfo $Link.href)
 				}
 			}
 		}
@@ -381,10 +400,10 @@ Function Get-Filelisting() {
 			If ($File.Name -Match ($FileTypes -join '|')) {
 				$Res += $File.Name
 				$Res += [PSCustomObject][Ordered] @{
-					$FullName = $File.FullName
-					$Filename = $File.Name
+					FullName = $File.FullName
+					Filename = $File.Name
 					# Versuchen, die Versionsinfo zu bestimmen
-					$oCiscoVersion = (Get-CiscoSetupFilename-VersionInfo $File.Name)
+					oCiscoVersion = (Get-CiscoSetupFilename-VersionInfo $File.Name)
 				}
 			}
 		}
@@ -441,24 +460,6 @@ Function Get-Files-CiscoVersions() {
 	Return @( @($Files | select oVersion -Unique), $Files)
 }
 
-
-# Verbinded zwei URLs
-#
-# Wenn $Append = $True, dann wird $Realtive dem ganzen Root-Pfad zugefügt
-# Sonst wird Relative nur dem Host zugefügt
-Function Join-URL ($Root, $Relative, [Switch]$Append = $True) {
-	# Sicherstellen, dass am Ende kein Slash existiert
-	$Root = $Root.TrimEnd('/').TrimEnd('\')
-	# Wenn $Relative zum ganzen Root-Pfad zugefügt werden muss, benoetigt Root ein Slash
-	If ($Append) { $Root = $Root + '/' }
-	# https://msdn.microsoft.com/en-us/library/system.uri(v=vs.110).aspx
-	$RootUri = New-Object System.Uri($Root)
-	(New-Object System.Uri($RootUri, $Relative)).AbsoluteUri
-}
-
-Function Is-WhatIf() {
-	$WhatIfPreference
-}
 
 
 # Holt eine Msi-Datei vom Web
