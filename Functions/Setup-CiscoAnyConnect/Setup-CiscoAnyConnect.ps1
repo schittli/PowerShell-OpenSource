@@ -611,7 +611,9 @@ if (!(Is-Elevated)) {
 		Start-Process PowerShell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -Command $Command"
 	}
 
-	If ($NoExit -eq $False) {
+	If ($NoExit) {
+		Break Script
+	} Else {
 		# Exit from the current, unelevated, process
 		Start-Sleep -Milliseconds 2500
 		Exit
