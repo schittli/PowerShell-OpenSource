@@ -665,6 +665,9 @@ ForEach($eSelectedModule in $eSelectedModules) {
 	# In der Dateiliste das richtige msi suchen
 	$SetupFileName = Get-CiscoModule-Filename -eCiscoModule $eSelectedModule -WebSiteFilenames $CiscoSetupFiles
 	
+	Log 0 '$SetupFileName'
+	Write-Host ($SetupFileName | select * | Out-String)
+	
 	# Allenfalls das Setup herunterladen
 	If ($InstallFromWeb) {
 		$ThisMsiFilename = Get-File-FromWeb -FileUrl $SetupFileName.Fullname -TempDir $TempDir
