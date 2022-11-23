@@ -42,8 +42,6 @@ Param(
 $Version = '1.0, 22.11.22'
 $Feedback = 'bitte an: schittli@akros.ch'
 
-$VersionZuInstallieren = '4.10.05111'
-
 $CiscoSetupFileTypes = @('.msi$', '.zip$')
 
 # Die Standardmodule, die in der Nosergruppe installiert werden
@@ -357,7 +355,40 @@ Function Get-Web-Filelisting() {
 		$Res = @()
 		ForEach ($Link in $Files.Links) {
 			If ($Link.href -Match ($FileTypes -join '|')) {
-				$Res += $Link.href
+				$Res += [PSCustomObject][Ordered] = @{
+					$FullName = (Join-URL $Url $Link.href)
+					$Filename = $Link.href
+					# Versuchen, die Versionsinfo zu bestimmen
+					$oCiscoVersion = (Get-CiscoSetupFilename-VersionInfo $Link.href)
+				}
+			}
+		}
+		Return $Res
+	}
+}
+
+
+# Liest von der lokalen Dir die Liste der Files,
+# die zu einem Filetyp passen
+Function Get-Filelisting() {
+	Param(
+		[Parameter(Mandatory)][String]$LocalDir,
+		# e.g. @('.msi$', '.zip$')
+		[Parameter(Mandatory)][String[]]$FileTypes
+	)
+	
+	$Files = Get-ChildItem -LiteralPath $LocalDir
+	If ($Files) {
+		$Res = @()
+		ForEach ($File in $Files) {
+			If ($File.Name -Match ($FileTypes -join '|')) {
+				$Res += $File.Name
+				$Res += [PSCustomObject][Ordered] = @{
+					$FullName = $File.FullName
+					$Filename = $File.Name
+					# Versuchen, die Versionsinfo zu bestimmen
+					$oCiscoVersion = (Get-CiscoSetupFilename-VersionInfo $File.Name)
+				}
 			}
 		}
 		Return $Res
@@ -390,6 +421,30 @@ Function Get-Webfiles-CiscoVersions() {
 }
 
 
+# Liest von einem lokalen Verzeichnis wie
+# alle Files und extrahiert die Cisco-Version
+# 
+# !Ex
+# 	$CiscoVersions, $Files = Get-Webfiles-CiscoVersions -Url $BinDlUrl -FileTypes $CiscoSetupFileTypes
+Function Get-Files-CiscoVersions() {
+	Param(
+		[Parameter(Mandatory)][String]$LocalDir,
+		# e.g. @('.msi$', '.zip$')
+		[Parameter(Mandatory)][String[]]$FileTypes
+	)
+	
+	$Files = Get-Filelisting -LocalDir $LocalDir -FileTypes $FileTypes
+	If ($Files) {
+		$Files = Array-ToObj -Items $Files
+		ForEach ($File in $Files) {
+			$FileVersion = Get-CiscoSetupFilename-VersionInfo $File.Name
+			$File | Add-Member -MemberType NoteProperty -Name oVersion -Value $FileVersion
+		}
+	}
+	Return @( @($Files | select oVersion -Unique), $Files)
+}
+
+
 # Verbinded zwei URLs
 #
 # Wenn $Append = $True, dann wird $Realtive dem ganzen Root-Pfad zugefügt
@@ -413,16 +468,13 @@ Function Is-WhatIf() {
 Function Get-MsiFile-FromWeb() {
 	Param(
 		[Parameter(Mandatory)]
-		[String]$MsiExeFileName,
-		[Parameter(Mandatory)]
-		[String]$BinDlUrl,
+		[String]$MsiUrl,
 		[Parameter(Mandatory)]
 		[String]$TempDir
 	)
 	
 	# Das MSI vom Web holen
-	$MsiUrl = Join-URL $BinDlUrl $MsiExeFileName
-	$DlFilename = Join-Path $TempDir $MsiExeFileName
+	$DlFilename = Join-Path $TempDir ([IO.Path]::GetFileName( $MsiUrl ))
 	# Download
 	$Res = Invoke-WebRequest -URI $MsiUrl -OutFile $DlFilename -PassThru
 	If ($Res.StatusCode -eq 200) {
@@ -476,12 +528,11 @@ Function Get-MsiFile() {
 }
 
 
-
+# Startet Cisco AnyConnect
 Function Start-CiscoAnyConnectExe() {
 	$CiscoAnyConnectExe = (Get-ChildItem -LiteralPath 'C:\Program Files (x86)\Cisco\' -Filter 'vpnui.exe' -Recurse | Sort LastWriteTime -Descending | select -First 1 -ExpandProperty Fullname)
 	If ($CiscoAnyConnectExe) { . $CiscoAnyConnectExe }
 }
-
 
 
 # Sucht in der Liste der Files der Webseite
@@ -518,7 +569,7 @@ Function Get-CiscoModule-Filename() {
 
 
 
-## Prepare
+### Prepare
 
 $LocalBinDir = Join-Path $ScriptDir 'Bin'
 $TempDir = Get-TempDir
@@ -526,7 +577,6 @@ $TempDir = Get-TempDir
 Log 0 'Pruefe, ob Cisco AnyConnect aktualisiert werden muss'
 Log 1 "Version: $Version" -ForegroundColor DarkGray
 Log 1 "Rückmeldungen bitte an: $Feedback" -ForegroundColor DarkGray
-
 
 # Aus den gewaehlten Modulen die Enum-Liste erstellen
 $eSelectedModules = @()
@@ -558,10 +608,17 @@ If ($InstallNosergroupDefaultModules) {
 }
 
 
+
 ## Main
 
 Log 1 'Lese die Cisco-Version'
-$CiscoVersions, $CiscoWebSiteFilenames = @(Get-Webfiles-CiscoVersions -Url $BinDlUrl -FileTypes $CiscoSetupFileTypes)
+If ($InstallFromWeb) {
+	$CiscoVersions, $CiscoSetupFiles = Get-Webfiles-CiscoVersions -Url $BinDlUrl -FileTypes $CiscoSetupFileTypes
+} Else {
+	$CiscoVersions, $CiscoSetupFiles = Get-Files-CiscoVersions -LocalDir $LocalBinDir -FileTypes $CiscoSetupFileTypes)
+}
+
+
 
 ## Haben wir nur 1 Cisco Version?
 Switch ($CiscoVersions.Count) {
@@ -606,27 +663,15 @@ ForEach($eSelectedModule in $eSelectedModules) {
 	$ThisModuleCfg = $SetupCfg[$eSelectedModule]
 	Log 2 ("Installiere {0}/{1}: {2}" -f ($Cnt++), $Anz, $ThisModuleCfg.Name) -ForegroundColor Yellow
 	
-	If ($InstallFromWeb) {
-		# In der Dateiliste das richtige msi suchen
-		$SetupFileName = Get-CiscoModule-Filename -eCiscoModule $eSelectedModule -WebSiteFilenames $CiscoWebSiteFilenames 
-		
-		$ThisMsiFilename = Get-MsiFile-FromWeb -MsiExeFileName $SetupFileName -BinDlUrl $BinDlUrl -TempDir $TempDir
-
-	} Else {
-		
-		# Den Exe-Namen berechnen
-		$MsiExeFileName = ('{0}{1}{2}{3}{4}' -f $MsiFilenamePrefix, $VersionZuInstallieren, $MsiFilenameDelimiter, $ThisModuleCfg.MsiName, $SetupExt)
-		# Debug
-		# Write-Host $MsiExeFileName
-		
-		# Das MSI File suchen oder herunterladen
-		$ThisMsiFilename = Get-MsiFile -MsiExeFileName $MsiExeFileName `
-									-LocalBinDir $LocalBinDir `
-									-BinDlUrl $BinDlUrl `
-									-TempDir $TempDir
-		# Write-Host "Gefunden: $($ThisMsiFilename)"
-	}
+	# In der Dateiliste das richtige msi suchen
+	$SetupFileName = Get-CiscoModule-Filename -eCiscoModule $eSelectedModule -WebSiteFilenames $CiscoSetupFiles
 	
+	# Allenfalls das Setup herunterladen
+	If ($InstallFromWeb) {
+		$ThisMsiFilename = Get-MsiFile-FromWeb -MsiExeFileName $SetupFileName -BinDlUrl $BinDlUrl -TempDir $TempDir
+	} Else {
+		$ThisMsiFilename = $SetupFileName.FullName
+	}
 	
 	# Wenn wir ein MSI File haben
 	If ($ThisMsiFilename) {
