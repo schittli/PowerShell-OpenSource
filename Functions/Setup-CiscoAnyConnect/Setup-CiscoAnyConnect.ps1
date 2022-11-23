@@ -605,16 +605,16 @@ if (!(Is-Elevated)) {
 	# $Command = ('[Net.ServicePointManager]::SecurityProtocol = ''Tls12''; Invoke-Expression ""&{{ $(Invoke-RestMethod -Uri ''{0}'') }} {1}""' -f $ThisScriptPermaLink, ($InvocationAllArgs -join ' '))
 
 	# 221123 181416
-	
-# [Net.ServicePointManager]::SecurityProtocol = 'Tls12'; 
+
+# [Net.ServicePointManager]::SecurityProtocol = 'Tls12';
 # iex "& { $(irm 'https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Setup-CiscoAnyConnect/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb -NoExit"
-	
+
 
 	## Den Scriptaufruf vorbereiten
 	# TLS 1.2 aktivieren
 	$InvokeScriptCmd = '[Net.ServicePointManager]::SecurityProtocol = "Tls12"; '
 	# Invoke-Expression vorbereiten
-	$InvokeScriptCmd += 'Invoke-Expression " &{ $(Invoke-RestMethod -Uri "' + $ThisScriptPermaLink '") } '
+	$InvokeScriptCmd += 'Invoke-Expression " &{ $(Invoke-RestMethod -Uri "' + $ThisScriptPermaLink + '") } '
 	# Dem heruntergeladenen Script die Parameter mitgeben
 	$InvokeScriptCmd += ($InvocationAllArgs -join ' ')
 
@@ -622,10 +622,10 @@ if (!(Is-Elevated)) {
 	$BasicPSSetting = '-ExecutionPolicy Bypass '
 	If ($NoExit) {
 		$BasicPSSetting += '-NoExit '
-	}		
+	}
 
 	$MainCmd = "-Command CD 'C:\Temp'; $InvokeScriptCmd"
-	
+
 	$AllCmds = $BasicPSSetting + $MainCmd
 
 	Write-Host $AllCmds -ForegroundColor Magenta
