@@ -35,7 +35,9 @@ Param(
 	[String[]]$CiscoModules,
 	[Switch]$InstallFromWeb,
 	# Die Url zum Bin-Verzeichnis mit den Msi Files
-	[String]$BinDlUrl = 'https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell/Bin'
+	[String]$BinDlUrl = 'https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell/Bin',
+	# Die elevated Shell nicht schliessen
+	[Switch]$NoExit
 )
 
 
