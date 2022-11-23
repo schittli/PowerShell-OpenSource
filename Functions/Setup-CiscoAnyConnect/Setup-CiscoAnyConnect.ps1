@@ -10,13 +10,13 @@
 # !Ex
 # 	# 1. PowerShell öffnen (wechselt selber in den elevated Mode)
 # 	# 2. Ausführen: (mit copy & paste!)
-#		[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm -DisableKeepAlive 'https://www.akros.ch/it/Cisco/Test/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb"
+#		[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm -DisableKeepAlive 'https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Setup-CiscoAnyConnect/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb"
 #
 # 	# Variante mit -ShowDebugInfos:
-#		[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm -DisableKeepAlive 'https://www.akros.ch/it/Cisco/Test/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb -ShowDebugInfos"
+#		[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm -DisableKeepAlive 'https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Setup-CiscoAnyConnect/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb -ShowDebugInfos"
 #
 # 	# Variante mit -WhatIf:
-#		[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm -DisableKeepAlive 'https://www.akros.ch/it/Cisco/Test/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb -WhatIf"
+#		[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm -DisableKeepAlive 'https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Setup-CiscoAnyConnect/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb -WhatIf"
 #
 #
 # 001, 221109, Tom
