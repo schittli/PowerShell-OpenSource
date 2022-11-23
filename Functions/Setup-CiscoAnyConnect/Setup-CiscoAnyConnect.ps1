@@ -32,6 +32,8 @@
 #	Neu: Das Script sucht automatisch die Cisco Setup Files, ohne Angabe der Versionsnummer
 # 005, 221123
 #	Autostart Shell elevated
+# 006, 221123
+# 	Es wird nur aktualisiert, wenn die installierte Version veraltet ist oder fehlt
 
 [CmdletBinding(SupportsShouldProcess, DefaultParameterSetName = 'SetupDefaultModules')]
 Param(
@@ -711,15 +713,397 @@ If ($InstallNosergroupDefaultModules) {
 
 
 
+Function Has-Value($Data) {
+	If ($Data -eq $null) { Return $False }
+	Switch ($Data.GetType().Name) {
+		'String' {
+			If ([String]::IsNullOrEmpty($Data)) { Return $False }
+			Else { Return $True }
+		}
+		Default {
+			Return $True
+		}
+	}
+}
+
+
+# Erzeugt aus
+# C:\Program Files (x86)\Cisco\Cisco AnyConnect Secure Mobility Client\Uninstall.exe -remove
+# Den richtigen Befehl:
+# "C:\Program Files (x86)\Cisco\Cisco AnyConnect Secure Mobility Client\Uninstall.exe" -remove
+#
+Function Split-Command-AndArgs($Command) {
+	$Items = $Command -split ' '
+	for ($i = 0; $i -lt $Items.Count; $i++) {
+		$TestPath = $items[0 .. $i] -join ' '
+		# Get-Command erkennt auch Befehle, ohne dass die Dateierweiterung angegeben wird :-)
+		$Cmd = Get-Command $TestPath -ErrorAction SilentlyContinue
+		If ($Cmd -ne $null) {
+			Return ("`"{0}`" {1}" -f $TestPath, ($items[($i + 1) .. ($Items.Count - 1)] -join ' '))
+		}
+	}
+}
+
+
+# Liefert die Liste der installierten SW
+Function Get-Installed-Software {
+	<#
+.Synopsis
+	This function generates a list by querying the registry and returning the installed programs of a local or remote computer.
+	200807, tom-agplv3@jig.ch
+
+.PARAMETER ComputerName
+	The computer to which connectivity will be checked
+
+.PARAMETER Property
+	Additional values to be loaded from the registry.
+	A String or array of String hat will be attempted to retrieve from the registry for each program entry
+
+.PARAMETER IncludeProgram
+	This will include the Programs matching that are specified as argument in this parameter.
+	Wildcards allowed.
+
+.PARAMETER ExcludeProgram
+	This will exclude the Programs matching that are specified as argument in this parameter.
+	Wildcards allowed.
+
+.PARAMETER ProgramRegExMatch
+	Change IncludeProgram / ExcludeProgram
+	from -like operator
+	to -match operator.
+
+.PARAMETER LastAccessTime
+	Estimates the last time the program was executed by looking in the installation folder,
+	if it exists, and retrieves the most recent LastAccessTime attribute of any .exe in that folder.
+	This increases execution time of this script as it requires (remotely) querying the file system to retrieve this information.
+
+.PARAMETER ExcludeSimilar
+	This will filter out similar programnames,
+	the default value is to filter on the first 3 words in a program name.
+	If a program only consists of less words it is excluded and it will not be filtered.
+	For example if you Visual Studio 2015 installed it will list all the components individually,
+	using -ExcludeSimilar will only display the first entry.
+
+.PARAMETER SimilarWord
+	This parameter only works when ExcludeSimilar is specified,
+	it changes the default of first 3 words to any desired value.
+
+.PARAMETER DisplayRegPath
+	Displays the registry path as well as the program name
+
+.PARAMETER MicrosoftStore
+	Also queries the package list reg key, allows for listing Microsoft Store products for current user
+
+
+.EXAMPLE
+	Get-Installed-Software
+	Get list of installed programs on local machine
+
+.EXAMPLE
+	Get-Installed-Software -Property DisplayVersion,VersionMajor,Installdate | ft
+
+.EXAMPLE
+	Get-Installed-Software -Property DisplayVersion,VersionMajor,Installdate,UninstallString
+
+.EXAMPLE
+	Get-Installed-Software -ComputerName server01,server02
+	Get list of installed programs on server01 and server02
+
+.EXAMPLE
+	'server01','server02' | Get-Installed-Software -Property UninstallString
+	Get the installed programs on server01/02 that are passed on to the function
+	through the pipeline
+	and also retrieves the uninstall String for each program
+
+.EXAMPLE
+	'server01','server02' | Get-Installed-Software -Property UninstallString -ExcludeSimilar -SimilarWord 4
+	Get retrieve the installed programs on server01/02
+	that are passed on to the function through the pipeline
+	and also retrieves the uninstall String for each program.
+	Will only display a single entry of a program of which the first four words are identical.
+
+.EXAMPLE
+	Get-Installed-Software -Property installdate,UninstallString,installlocation -LastAccessTime | Where-Object {$_.installlocation}
+	Get the list of programs from Server01
+	and retrieves the InstallDate,UninstallString and InstallLocation properties.
+	Then filters out all products that do not have a installlocation set
+	and displays the LastAccessTime when it can be resolved.
+
+.EXAMPLE
+	Get-Installed-Software -Property installdate -IncludeProgram *office*
+	Get the InstallDate of all components that match the wildcard pattern of *office*
+
+.EXAMPLE
+	Get-Installed-Software -Property installdate -IncludeProgram 'Microsoft Office Access','Microsoft SQL Server 2014'
+
+	Get the InstallDate of all components
+	that exactly match Microsoft Office Access & Microsoft SQL Server 2014
+
+.EXAMPLE
+	Get-Installed-Software -Property installdate -IncludeProgram '*[10*]*' | Format-Table -Autosize > MyInstalledPrograms.txt
+
+	Get the ComputerName, ProgramName and installdate
+	of the programs matching the *[10*]* wildcard
+	and using Format-Table
+	and redirection to write this output to text file
+
+.EXAMPLE
+	Get-Installed-Software -IncludeProgram ^Office -ProgramRegExMatch
+
+	Get the InstallDate of all components
+	that match the regex pattern of ^Office.*,
+	which means any ProgramName starting with the word Office
+
+.EXAMPLE
+	Get-Installed-Software -DisplayRegPath
+
+	Get the list of programs from the local system and displays the registry path
+
+.EXAMPLE
+	Get-Installed-Software -DisplayRegPath -MicrosoftStore
+
+.NOTES
+	Q
+	https://gallery.technet.microsoft.com/scriptcenter/Get-Installed-Software-Get-list-de9fd2b4
+	001 O
+	002	Bereinigung des Uninstall-Strings
+#>
+	[CmdletBinding(SupportsShouldProcess = $true)]
+	Param(
+		[Parameter(ValueFromPipeline = $true,
+			ValueFromPipelineByPropertyName = $true,
+			Position = 0
+		)]
+		[String[]]$ComputerName = $env:COMPUTERNAME,
+		[Parameter(Position = 0)]
+		[String[]]$Property,
+		[String[]]$IncludeProgram,
+		[String[]]$ExcludeProgram,
+		[switch]$ProgramRegExMatch,
+		[switch]$LastAccessTime,
+		[switch]$ExcludeSimilar,
+		[switch]$DisplayRegPath,
+		[switch]$MicrosoftStore,
+		[Int]$SimilarWord
+	)
+
+	Begin {
+		$RegistryLocation = 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\',
+		'SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\'
+
+		if ($psversiontable.psversion.major -gt 2) {
+			$HashProperty = [ordered]@{}
+		}
+		else {
+			$HashProperty = @{}
+			$SelectProperty = @('ComputerName', 'ProgramName')
+			if ($Property) {
+				$SelectProperty += $Property
+			}
+			if ($LastAccessTime) {
+				$SelectProperty += 'LastAccessTime'
+			}
+		}
+	}
+
+	Process {
+		foreach ($Computer in $ComputerName) {
+			try {
+				$socket = New-Object Net.Sockets.TcpClient($Computer, 445)
+				if ($socket.Connected) {
+					'LocalMachine', 'CurrentUser' | ForEach-Object {
+						$RegName = if ('LocalMachine' -eq $_) {
+							'HKLM:\'
+						}
+						else {
+							'HKCU:\'
+						}
+
+						if ($MicrosoftStore) {
+							$MSStoreRegPath = 'Software\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\Repository\Packages\'
+							if ('HKCU:\' -eq $RegName) {
+								if ($RegistryLocation -notcontains $MSStoreRegPath) {
+									$RegistryLocation = $MSStoreRegPath
+								}
+							}
+						}
+
+						$RegBase = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey([Microsoft.Win32.RegistryHive]::$_, $Computer)
+						$RegistryLocation | ForEach-Object {
+							$CurrentReg = $_
+							if ($RegBase) {
+								$CurrentRegKey = $RegBase.OpenSubKey($CurrentReg)
+								if ($CurrentRegKey) {
+									$CurrentRegKey.GetSubKeyNames() | ForEach-Object {
+										Write-Verbose -Message ('{0}{1}{2}' -f $RegName, $CurrentReg, $_)
+
+										$DisplayName = ($RegBase.OpenSubKey("$CurrentReg$_")).GetValue('DisplayName')
+										if (($DisplayName -match '^@{.*?}$') -and ($CurrentReg -eq $MSStoreRegPath)) {
+											$DisplayName = $DisplayName -replace '.*?\/\/(.*?)\/.*', '$1'
+										}
+
+										$HashProperty.ComputerName = $Computer
+										$HashProperty.ProgramName = $DisplayName
+
+										if ($DisplayRegPath) {
+											$HashProperty.RegPath = '{0}{1}{2}' -f $RegName, $CurrentReg, $_
+										}
+
+										if ($IncludeProgram) {
+											if ($ProgramRegExMatch) {
+												$IncludeProgram | ForEach-Object {
+													if ($DisplayName -notmatch $_) {
+														$DisplayName = $null
+													}
+												}
+											}
+											else {
+												$IncludeProgram | Where-Object {
+													$DisplayName -notlike ($_ -replace '\[', '`[')
+												} | ForEach-Object {
+													$DisplayName = $null
+												}
+											}
+										}
+
+										if ($ExcludeProgram) {
+											if ($ProgramRegExMatch) {
+												$ExcludeProgram | ForEach-Object {
+													if ($DisplayName -match $_) {
+														$DisplayName = $null
+													}
+												}
+											}
+											else {
+												$ExcludeProgram | Where-Object {
+													$DisplayName -like ($_ -replace '\[', '`[')
+												} | ForEach-Object {
+													$DisplayName = $null
+												}
+											}
+										}
+
+										if ($DisplayName) {
+											if ($Property) {
+												foreach ($CurrentProperty in $Property) {
+													# tomtom: den UninstallString bereiigen
+													If ($CurrentProperty -eq 'UninstallString') {
+														$UninstallString = ($RegBase.OpenSubKey("$CurrentReg$_")).GetValue($CurrentProperty)
+														$UninstallStringCln = $UninstallString
+														If ([String]::IsNullOrEmpty($UninstallStringCln)) {
+															$HashProperty.$CurrentProperty = ''
+															$HashProperty.UninstallStringCln = ''
+														}
+														Else {
+															$UninstallStringCln = $UninstallStringCln.Trim()
+															# Äussere " entfernen
+															If ($UninstallStringCln[0] -eq '"' -and $UninstallStringCln[-1] -eq '"') {
+																$UninstallStringCln = $UninstallStringCln[1..($UninstallStringCln.Length - 2)] -Join ''
+															}
+															# Äussere ' entfernen
+															If ($UninstallStringCln[0] -eq "'" -and $UninstallStringCln[-1] -eq "'") {
+																$UninstallStringCln = $UninstallStringCln[1..($UninstallStringCln.Length - 2)] -Join ''
+															}
+															# Erzeugt:
+															# "C:\Program Files (x86)\Cisco\Cisco AnyConnect Secure Mobility Client\Uninstall.exe" -remove
+															$UninstallStringCln = Split-Command-AndArgs $UninstallStringCln
+															$HashProperty.$CurrentProperty = $UninstallString
+															$HashProperty.UninstallStringCln = $UninstallStringCln
+														}
+													}
+													Else {
+														$HashProperty.$CurrentProperty = ($RegBase.OpenSubKey("$CurrentReg$_")).GetValue($CurrentProperty)
+													}
+												}
+											}
+											if ($LastAccessTime) {
+												$InstallPath = ($RegBase.OpenSubKey("$CurrentReg$_")).GetValue('InstallLocation') -replace '\\$', ''
+												if ($InstallPath) {
+													$WmiSplat = @{
+														ComputerName = $Computer
+														Query        = $("ASSOCIATORS OF {Win32_Directory.Name='$InstallPath'} Where ResultClass = CIM_DataFile")
+														ErrorAction  = 'SilentlyContinue'
+													}
+													$HashProperty.LastAccessTime = Get-WmiObject @WmiSplat |
+													Where-Object { $_.Extension -eq 'exe' -and $_.LastAccessed } |
+													Sort-Object -Property LastAccessed |
+													Select-Object -Last 1 | ForEach-Object {
+														$_.ConvertToDateTime($_.LastAccessed)
+													}
+												}
+												else {
+													$HashProperty.LastAccessTime = $null
+												}
+											}
+
+											if ($psversiontable.psversion.major -gt 2) {
+												[PSCustomObject]$HashProperty
+											}
+											else {
+												New-Object -TypeName PSCustomObject -Property $HashProperty |
+												Select-Object -Property $SelectProperty
+											}
+										}
+										$socket.Close()
+									}
+
+								}
+
+							}
+
+						}
+					}
+				}
+			}
+			catch {
+				Write-Error $_
+			}
+		}
+	}
+
+	End {
+	}
+
+}
+
+
+# Sucht die installierte Cisco Software
+# !Ex
+# 	Get-CiscoSW-ToUninstall -Property DisplayVersion, VersionMajor, Installdate, Uninstallstring
+Function Get-CiscoSW-ToUninstall([String[]]$Property, [String[]]$IncludeProgram = '*Cisco *') {
+	$Splat = @{ }
+	If ($Property) { $Splat += @{ Property = $Property } }
+	If ($IncludeProgram) { $Splat += @{ IncludeProgram = $IncludeProgram } }
+	Get-Installed-Software @Splat
+}
+
+
+
+# Sucht das Modul ISE Posture und liefert die installierte Version zurück
+Function Get-Installed-CiscoVersion() {
+
+	Log 1 'Lese die Liste der installierten SW'
+	# Alle installierte Cisco SW bestimmen
+	$CiscoSW = Get-CiscoSW-ToUninstall -Property DisplayVersion, VersionMajor, Installdate, UninstallString
+
+	## Herausfinden, welche Cisco Version insalliert ist
+	# dafür nützen wir ISE Posture
+	$CiscoIsePosture = $CiscoSW | ? ProgramName -like '*ISE Posture*'
+	If ($CiscoIsePosture) {
+		$InstalledCiscoIsePostureVersion = [Version]$CiscoIsePosture.DisplayVersion
+		Return $InstalledCiscoIsePostureVersion
+	}
+}
+
+
 ## Main
 
-Log 1 'Lese die Cisco-Version'
+Log 1 'Lese die verfügbare Cisco-Version'
 If ($InstallFromWeb) {
 	$CiscoVersions, $CiscoSetupFiles = Get-Webfiles-CiscoVersions -Url $BinDlUrl -FileTypes $CiscoSetupFileTypes
 } Else {
 	$CiscoVersions, $CiscoSetupFiles = Get-Files-CiscoVersions -LocalDir $LocalBinDir -FileTypes $CiscoSetupFileTypes
 }
-
 
 
 ## Haben wir nur 1 Cisco Version?
@@ -746,6 +1130,19 @@ Switch ($CiscoVersions.Count) {
 		Break Script
 	}
 }
+
+
+# Die installierte Cisco Version bestimmen
+$InstalledCiscoIsePostureVersion = Get-Installed-CiscoVersion
+
+
+# Ist die verfügbare Version älter oder gleich alt wie die installierte Version?
+If ($CiscoVersions[0].oCiscoVersion -le $InstalledCiscoIsePostureVersion) {
+	Log 0 'Cisco ist bereits aktuell' -ForegroundColor Green
+	Start-Sleep -Milliseconds 3500
+	Break Script
+}
+
 
 
 ## Installation starten
