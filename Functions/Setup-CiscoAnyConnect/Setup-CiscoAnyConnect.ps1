@@ -617,7 +617,7 @@ if (!(Is-Elevated)) {
 	$InvokeScriptCmd += '$A=""1"";'
 	$InvokeScriptCmd += '$B=`"2`";'
 	# Invoke-Expression vorbereiten
-	$InvokeScriptCmd += 'Invoke-Expression " &{ $(Invoke-RestMethod -DisableKeepAlive -Uri ''' + $ThisScriptPermaLink + ''') } '
+	$InvokeScriptCmd += '# Invoke-Expression " &{ $(Invoke-RestMethod -DisableKeepAlive -Uri ''' + $ThisScriptPermaLink + ''') } '
 	# Dem heruntergeladenen Script die Parameter mitgeben
 	$InvokeScriptCmd += ($InvocationAllArgs -join ' ')
 	$InvokeScriptCmd += '"'
