@@ -601,7 +601,7 @@ if (!(Is-Elevated)) {
 
 	# $Command = "[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; Invoke-Expression (Invoke-RestMethod -Uri `"$ThisScriptPermaLink`") $InvocationAllArgs"
 	# $Command = ('[Net.ServicePointManager]::SecurityProtocol = ''Tls12''; Invoke-Expression " &{{ $(Invoke-RestMethod -Uri "{0}") }} {1}"' -f $ThisScriptPermaLink, ($InvocationAllArgs -join ' '))
-	$Command = ('[Net.ServicePointManager]::SecurityProtocol = ''Tls12''; Invoke-Expression "&{{ $(Invoke-RestMethod -Uri ''{0}'') }} {1}"' -f $ThisScriptPermaLink, ($InvocationAllArgs -join ' '))
+	$Command = ('[Net.ServicePointManager]::SecurityProtocol = ''Tls12''; Invoke-Expression ""&{{ $(Invoke-RestMethod -Uri ''{0}'') }} {1}""' -f $ThisScriptPermaLink, ($InvocationAllArgs -join ' '))
 
 	Write-Host $Command -ForegroundColor Magenta
 
@@ -611,9 +611,11 @@ if (!(Is-Elevated)) {
 		Start-Process PowerShell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -Command $Command"
 	}
 
-	# Exit from the current, unelevated, process
-	Start-Sleep -Milliseconds 2500
-	# Exit
+	If ($NoExit -eq $False) {
+		# Exit from the current, unelevated, process
+		Start-Sleep -Milliseconds 2500
+		Exit
+	}
 
 } Else {
 	$Host.UI.RawUI.WindowTitle = $MyInvocation.MyCommand.Definition + ' (Elevated)'
