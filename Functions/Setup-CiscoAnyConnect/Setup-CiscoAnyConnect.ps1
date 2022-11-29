@@ -15,13 +15,13 @@
 # !Ex
 # 	# 1. PowerShell öffnen (wechselt selber in den elevated Mode)
 # 	# 2. Ausführen: (mit copy & paste!)
-#		[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm -DisableKeepAlive 'https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Setup-CiscoAnyConnect/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb"
+#		[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm -DisableKeepAlive 'https://g.akros.ch/githubs/PowerShell-OpenSource/raw/main/Functions/Setup-CiscoAnyConnect/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb"
 #
 # 	# Variante mit -ShowDebugInfos:
-#		[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm -DisableKeepAlive 'https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Setup-CiscoAnyConnect/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb -ShowDebugInfos"
+#		[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm -DisableKeepAlive 'https://g.akros.ch/githubs/PowerShell-OpenSource/raw/main/Functions/Setup-CiscoAnyConnect/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb -ShowDebugInfos"
 #
 # 	# Variante mit -WhatIf:
-#		[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm -DisableKeepAlive 'https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Setup-CiscoAnyConnect/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb -WhatIf"
+#		[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm -DisableKeepAlive 'https://g.akros.ch/githubs/PowerShell-OpenSource/raw/main/Functions/Setup-CiscoAnyConnect/Setup-CiscoAnyConnect.ps1') } -InstallNosergroupDefaultModules -InstallFromWeb -WhatIf"
 #
 #
 # 001, 221109, Tom
@@ -68,7 +68,7 @@ If ($PSVersionTable.PSVersion.Major -gt 5) {
 
 # Perma Link zum eigenen Script
 # !Sj Autostart Shell elevated
-$ThisScriptPermaLink = 'https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Setup-CiscoAnyConnect/Setup-CiscoAnyConnect.ps1'
+$ThisScriptPermaLink = 'https://g.akros.ch/githubs/PowerShell-OpenSource/raw/main/Functions/Setup-CiscoAnyConnect/Setup-CiscoAnyConnect.ps1'
 
 
 $Version = '1.0, 22.11.22'
@@ -1148,9 +1148,9 @@ If ($CiscoVersions[0].oCiscoVersion -le $InstalledCiscoIsePostureVersion) {
 ## Installation starten
 
 If ($InstallNosergroupDefaultModules) {
-	Log 0 'Installation der Standard-Komponenten fuer Geraete der Nosergruppe:' -ForegroundColor Green
+	Log 0 'Installation der Standard-Komponenten fuer Geraete der Nosergruppe:' -ForegroundColor Green -NewLineBefore
 } Else {
-	Log 0 'Installation von individuellen Komponenten:' -ForegroundColor Green
+	Log 0 'Installation von individuellen Komponenten:' -ForegroundColor Green -NewLineBefore
 }
 Log 1 "$($eSelectedModules -Join ', ')"
 

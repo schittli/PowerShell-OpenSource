@@ -26,5 +26,5 @@ Pfad: https://www.akros.ch/it/Cisco/AnyConnect/Windows/PowerShell
 ### 👉 Variante: Manuelle Installation per GUI
 
 Siehe:
-[https://github.com/schittli/noser-deploy-CiscoAnyConnectExe
-](https://github.com/schittli/noser-deploy-CiscoAnyConnectExe)
+[https://g.akros.ch/githubs/noser-deploy-CiscoAnyConnectExe
+](https://g.akros.ch/githubs/noser-deploy-CiscoAnyConnectExe)
