@@ -28,7 +28,7 @@
 #	#	und holt die PS Module vom angegebenen GitHub Repo
 #	# 	und aktualisiert die bereits installierten Module
 #	$GitHubRepo = 'https://github.com/iainbrighton/GitHubRepository'
-#	iex "& { $(irm 'https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Install-PSModule-FromGitHub/Install-Module-GitHub.ps1') } -GitHubRepoUrl $GitHubRepo -UpgradeInstalledModule"
+#	iex "& { $(irm 'https://g.akros.ch/githubs/PowerShell-OpenSource/raw/main/Functions/Install-PSModule-FromGitHub/Install-Module-GitHub.ps1') } -GitHubRepoUrl $GitHubRepo -UpgradeInstalledModule"
 #
 #
 #  # Aktualisiert ein allenfalls bereits installierte Module.
