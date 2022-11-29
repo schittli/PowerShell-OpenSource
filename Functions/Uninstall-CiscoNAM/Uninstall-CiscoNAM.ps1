@@ -8,7 +8,7 @@
 # 
 # !Ex
 # 	# In PowerShell ausführen, das Script startet sich automatisch elevated:
-# 	[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm 'https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Uninstall-CiscoNAM/Uninstall-CiscoNAM.ps1') }"
+# 	[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; iex "& { $(irm 'https://g.akros.ch/githubs/PowerShell-OpenSource/raw/main/Functions/Uninstall-CiscoNAM/Uninstall-CiscoNAM.ps1') }"
 # 
 # 
 # 
@@ -44,7 +44,7 @@ $Feedback = 'bitte an: schittli@akros.ch'
 
 # Perma Link zum eigenen Script
 # !Sj Autostart Shell elevated
-$ThisScriptPermaLink = 'https://github.com/schittli/PowerShell-OpenSource/raw/main/Functions/Uninstall-CiscoNAM/Uninstall-CiscoNAM.ps1'
+$ThisScriptPermaLink = 'https://g.akros.ch/githubs/PowerShell-OpenSource/raw/main/Functions/Uninstall-CiscoNAM/Uninstall-CiscoNAM.ps1'
 
 
 
@@ -665,7 +665,7 @@ If ( (Is-Elevated) -eq $False) {
 
 ## Main
 
-Log 1 'Lese die Liste der installierten SW'
+Log 1 'Lese die Liste der installierten SW' -NewLineBefore
 # Alle installierte Cisco SW bestimmen
 $CiscoSW = Get-CiscoSW-ToUninstall -Property DisplayVersion, VersionMajor, Installdate, UninstallString
 
@@ -704,12 +704,12 @@ If ($CiscoNAM) {
 		Log 1 'Alles OK!, der Cisco Network Access Manager (NAM) ist nicht mehr installiert' -ForegroundColor Green
 	}
 } Else {
-	Log 1 'Alles OK!, der Cisco Network Access Manager (NAM) ist nicht mehr installiert' -ForegroundColor Green
+	Log 1 'Alles OK!, der Cisco Network Access Manager (NAM) ist nicht mehr installiert' -ForegroundColor Red -NewLineBefore
 }
 
 
 If ($NoExit -eq $False) {
 	Write-Host "`n`n`n"
-	Write-Host 'Das Fenster wird sich in 5s selber schliessen' -ForegroundColor Gray
-	Start-Sleep -Milliseconds 5000
+	Write-Host 'Das Fenster wird sich in 15s selber schliessen' -ForegroundColor Gray
+	Start-Sleep -Milliseconds 15000
 }
