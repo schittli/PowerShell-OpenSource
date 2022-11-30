@@ -8,12 +8,15 @@
 #
 
 ## !Ex
-# 🟩
+#
+#	# Das Verzeichnis c:\…\…\
+#	# anonymisiert mit identischen Files und Dirs nachbilden
+#	.\ch.jig.tools\Public\Clone-Dir-WithRandomData.ps1 -SrcDir 'c:\…\…\' -DstDir 'c:\Temp\Test-Random' -RandomizeDirNames -RandomizeFileNames -RandomizeFileExt -Force
 #
 #
 
 ## Version
-# 001, 221028
+# 001, 221130
 
 
 ## ToDo, Ideen
@@ -38,7 +41,7 @@ Param(
 $NewFileWithRamdomData_ps1 = 'New-File-WithRamdomData.ps1'
 
 
-If ($MyInvocation.MyCommand.Path -eq $null) {
+If ($null -eq $MyInvocation.MyCommand.Path) {
 	$ScriptDir = Get-Location
 }
 Else {
@@ -81,27 +84,6 @@ Function Get-Random-FileName([Int]$NameLen, [Int]$ExtLen = 3) {
 }
 
 
-
-Function Enumerate-Dir() {
-	Param(
-		[Parameter(Mandatory)]
-		[String]$ThisDir,
-		[Switch]$Recurse
-	)
-
-	If ((Test-Path -LiteralPath $ThisDir) -eq $False) {
-		Write-Host "Verzeichnis existiert nicht: $ThisDir" -ForegroundColor Red
-		Return
-	}
-
-	# Zuerst alle Files verarbeiten
-	$ThisDirItems = Get-ChildItem -Force -Recurse
-	$ThisDirDirs = Get-ChildItem -Directory -Force
-
-
-}
-
-
 # Substring-Funktion, die mit Argumen-Fehlern klarkommt
 # Debugged: OK
 Function SubString() {
@@ -134,7 +116,7 @@ Function SubString() {
 #
 #		C:\GitWork\GitHub.com\schittli\PowerShell-OpenSource\Repo\Module\ch.jig.tools\.vscode
 #		C:\GitWork\GitHub.com\schittli\PowerShell-OpenSource\Repo\Module\2W.Vcz.VuJtr\.0Zahx8
-Function Calc-Ramdomized-Dirs() {
+Function Calc-Ramdomized-SubdirNames() {
 	Param(
 		[Parameter(Mandatory)][String]$ThisDir,
 		[Parameter(Mandatory)][Object]$oDictionary
@@ -161,7 +143,7 @@ Function Calc-Ramdomized-Dirs() {
 		}
 		$oDictionary.Add($_.FullName, $ThisDirRnd)
 		# Rekursiver Aufruf
-		Calc-Ramdomized-Dirs -ThisDir $_.FullName -oDictionary $oDictionary
+		Calc-Ramdomized-SubdirNames -ThisDir $_.FullName -oDictionary $oDictionary
 	}
 }
 
@@ -192,7 +174,7 @@ If ($HasDstDirFiles.Count -gt 0) {
 ## Wenn benötigt, die Zufalls-Verzeichnisnamen berechnen
 If ($RandomizeDirNames) {
 	$oDictRandomizedDirs = New-Object 'System.Collections.Generic.Dictionary[string,string]'
-	Calc-Ramdomized-Dirs -ThisDir $SrcDir -oDictionary $oDictRandomizedDirs
+	Calc-Ramdomized-SubdirNames -ThisDir $SrcDir -oDictionary $oDictRandomizedDirs
 }
 
 
@@ -203,20 +185,19 @@ $CacheSrcToDstDir = New-Object 'System.Collections.Generic.Dictionary[string,str
 
 ## Main
 
-Write-Host $SrcDir -ForegroundColor Red
-Write-Host $DstDir -ForegroundColor Red
+# Write-Host $SrcDir -ForegroundColor Red
+# Write-Host $DstDir -ForegroundColor Red
 
 # Die Quelle lesen
 $AllSrcFiles = Get-ChildItem -File -LiteralPath $SrcDir -Force -Recurse
 
 ForEach ($SrcFile in $AllSrcFiles) {
-	# Das Src Dir bestimmen
-	# If ($SrcFile.PSIsContainer) {
-	# 	$ThisSrcDir = $SrcFile.FullName
-	# } Else {
-	# 	$ThisSrcDir = $SrcFile.DirectoryName
-	# }
 	$ThisSrcDir = $SrcFile.DirectoryName
+	$ThisFileName = $SrcFile.BaseName
+	$ThisFileNameExtension = $SrcFile.Extension
+
+	$ThisSrcDirRelativeToSrcDir = SubString -Str1 $ThisSrcDir -Len $SrcDir.Length
+	Write-Host "bearbeite: $(Join-Path $ThisSrcDirRelativeToSrcDir $SrcFile.Name)"
 
 	# Haben wir das Zielverzeichnis bereicht berechnet?
 	If ($CacheSrcToDstDir.ContainsKey($ThisSrcDir)) {
@@ -247,10 +228,12 @@ ForEach ($SrcFile in $AllSrcFiles) {
 	## Das Zielverzeichnis erstellen
 	New-Item -Path $ThisDstDir -ItemType Directory -ErrorAction SilentlyContinue | Out-Null
 
-	## Die Zieldatei mit Zufallsdaten erzeugen
+	## Den Zieldatei-Namen berechnen
 
-	$ThisFileName = $SrcFile.BaseName
-	$ThisFileNameExtension = $SrcFile.Extension
+	# Debugging
+	# If ($SrcFile.Name -eq 'ReadMe.md') {
+	# 	$ddd = 1
+	# }
 
 	If ($RandomizeFileNames) {
 		$ThisFileName = Get-Random-Text -AnzChars $ThisFileName.Length
@@ -260,12 +243,9 @@ ForEach ($SrcFile in $AllSrcFiles) {
 	}
 
 	$NewFileName = '{0}{1}' -f $ThisFileName, $ThisFileNameExtension
+	$NewFileFullName = Join-Path $ThisDstDir $NewFileName
 
-	$NewFileName = Join-Path $ThisDstDir $NewFileName
-
-	& $NewFileWithRamdomData_ps1 -FileName $NewFileName -FileSize $SrcFile.Length -Force
-
-	$ass = 1
+	## Das File mit den Zufallsdaten erzeugen
+	& $NewFileWithRamdomData_ps1 -FileName $NewFileFullName -FileSize $SrcFile.Length -Force
 }
 
-$Ende = 1
