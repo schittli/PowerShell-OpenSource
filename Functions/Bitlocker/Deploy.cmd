@@ -7,10 +7,10 @@ SET "ScriptDir=%~dp0"
 
 
 Rem Die Scripts für die IT
-RoboCopy.exe %ScriptDir% "\\akros.ch\Ablage\IT-Scripts\AD-Bitlocker\\" *.cmd *.ps1 /COPY:DT /DCOPY:T /XC /XO /R:3
+RoboCopy.exe %ScriptDir% "\\akros.ch\Ablage\IT-Scripts\AD-Bitlocker\\" *.cmd *.ps1 *.lnk /COPY:DT /DCOPY:T /XC /XO /R:3
 
 Rem Die Scripts für die User
-RoboCopy.exe %ScriptDir% "\\basdc002.akros.ch\FirmaBiel\Infrastruktur\Scripts\BitLocker\\" *.cmd *.ps1 /COPY:DT /DCOPY:T /XC /XO /R:3
+RoboCopy.exe %ScriptDir% "\\basdc002.akros.ch\FirmaBiel\Infrastruktur\Scripts\BitLocker\\" *.cmd *.ps1 *.lnk /COPY:DT /DCOPY:T /XC /XO /R:3
 
 
 Pause
