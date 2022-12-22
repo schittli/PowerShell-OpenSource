@@ -11,7 +11,8 @@
 ::  	deshalb darf der User es nicht selber elevated starten
 ::  	> Bei Elevated einen entsprechenden Hinweis anzeigen
 :: 005, 221222
-::  - Bug fixes
+::  - Für CMD und PS je ein separates Temp-Dir
+
 
 
 :: Konfiguration
@@ -19,10 +20,6 @@
 SET Verbose=0
 SET PowerShellVerbose=0
 :: Ex: Call :Verbose "Verbose ist aktiv!"
-
-Set Header1=Noser SSF IT, Bitlocker-Verschluesselung
-Set Header2=Hinweise bitte an: Thomas.Schittli@akros.ch
-
 
 :: SET "PSScript_ps1=%ScriptFilename%.ps1"
 SET "PSScript_ps1=Enable-Bitlocker.ps1"
@@ -33,7 +30,7 @@ SET WaitOnEnd=1
 :: Wenn definiert, wird das QuellDir ins ZielDir kopiert 
 :: und dann von dort ausgeführt
 Rem SET CopyToCTempDir=
-SET CopyToCTempDir=C:\Temp\IT-Bitlocker
+SET CopyToCTempDir=C:\Temp\IT-Bitlocker-cmd
 
 
 Rem Optional nur diese Fieltypen kopieren
@@ -96,14 +93,13 @@ SET ClrWhiteLghtBG=[107m
 
 Rem Call :DisplayColors
 
-
 Rem Sind wir bereits elevated?
-If Defined SESSIONNAME (
-	Call :ShowHeader "%Header1%" "%Header2%"
-) Else (
+SETLOCAL EnableDelayedExpansion
+If Not Defined SESSIONNAME (
 	Echo %ClrReset%
-	Echo %Header1%
-	Echo %Header2%
+	Echo.
+	Echo Noser SSF IT, Bitlocker-Verschluesselung
+	Echo Hinweise bitte an: Thomas.Schittli@akros.ch
 	Echo.
 	Echo.
 	Echo.
@@ -129,10 +125,23 @@ If Defined SESSIONNAME (
 
 Rem Allenfalls die Quelldateien ins Ziel kopieren
 Rem und dann das ScriptDir neu setzen
-	Rem In einem If () Block kann Windows cmd keine Variablen setzen,
-	Rem also muss es in einer Funktion gemacht werden
-	Rem !M https://stackoverflow.com/questions/42283939/set-variable-inside-if-statement-windows-batch-file
-	Call :InitCopy
+If Not (%CopyToCTempDir%) == () (
+	Rem Trailing Backslash entfernen
+	Rem If "%CopyToCTempDir:~-1%" == "\" set "CopyToCTempDir=%CopyToCTempDir:~0,-1%"
+
+	Rem Trailing Backslash zufügen
+	Rem !Ex prüfen, ob die Variable überhaupt existiert
+	Rem If Defined CopyToCTempDir If Not "%CopyToCTempDir:~-1%"=="\" Set CopyToCTempDir=%CopyToCTempDir%\
+	If Not "%CopyToCTempDir:~-1%"=="\" Set CopyToCTempDir=%CopyToCTempDir%\
+
+	Rem Kopieren starten
+	Call :StartCopyToCTempDir %ScriptDir% %CopyToCTempDir%
+	
+	Rem Das ScriptDir ist nun das ZielDir
+	Set ScriptDir=%CopyToCTempDir%
+	Rem Trailing Backslash zufügen
+	If Not "%ScriptDir:~-1%"=="\" Set ScriptDir=%ScriptDir%\
+	Echo Fertig kopiert
 )
 
 
@@ -161,48 +170,6 @@ If (%WaitOnEnd%) == (1) (
 
 
 :: =========================================================================
-
-
-Rem Die Begrüssung anzeigen
-:ShowHeader
-Set Hdr1=%1
-Set Hdr2=%2
-Rem Remove "
-Set Hdr1=%Hdr1:"=%
-Set Hdr2=%Hdr2:"=%
-
-	Echo %ClrReset%
-	Echo.
-	Echo %ClrYellowLghtFG%%Hdr1%
-	Echo %ClrYellowLghtFG%%Hdr2%
-	Echo %ClrReset%
-	Echo.
-Exit /b
-
-
-Rem In einem If () Block kann Windows cmd keine Variablen setzen,
-Rem also muss es in einer Funktion gemacht werden
-Rem !M https://stackoverflow.com/questions/42283939/set-variable-inside-if-statement-windows-batch-file
-:InitCopy
-	Rem Trailing Backslash entfernen
-	Rem If "%CopyToCTempDir:~-1%" == "\" set "CopyToCTempDir=%CopyToCTempDir:~0,-1%"
-
-	Rem Trailing Backslash zufügen
-	Rem !Ex prüfen, ob die Variable überhaupt existiert
-	Rem If Defined CopyToCTempDir If Not "%CopyToCTempDir:~-1%"=="\" Set CopyToCTempDir=%CopyToCTempDir%\
-	If Not "%CopyToCTempDir:~-1%"=="\" Set CopyToCTempDir=%CopyToCTempDir%\
-
-	Rem Kopieren starten
-	Call :StartCopyToCTempDir %ScriptDir% %CopyToCTempDir%
-	
-	Rem Das ScriptDir ist nun das Arbeitsverzeichnis
-	CD %CopyToCTempDir%
-	Rem Das ScriptDir ist nun das ZielDir
-	Set ScriptDir=%CopyToCTempDir%
-	Rem Trailing Backslash zufügen
-	If Not "%ScriptDir:~-1%"=="\" Set ScriptDir=%ScriptDir%\
-Exit /b
-
 
 :StartPS
 :: Startet eine ps1 - Datei

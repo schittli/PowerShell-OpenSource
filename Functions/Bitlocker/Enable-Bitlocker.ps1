@@ -1282,9 +1282,9 @@ Function Get-TempDir() {
 }
 
 
-# Erzeugt in C:\Temp ein tempor$res Verzeichnis für dieses Script
+# Erzeugt in C:\Temp ein temporäres Verzeichnis für dieses Script
 Function Get-CTemp-BitlockerScriptDir() {
-	$TmpDir = 'C:\Temp\IT-Bitlocker'
+	$TmpDir = 'C:\Temp\IT-Bitlocker-PS'
 	If (Test-Path -LiteralPath $TmpDir) {
 		Remove-Item -LiteralPath $TmpDir -Recurse -Force -EA SilentlyContinue | Out-Null
 	}
