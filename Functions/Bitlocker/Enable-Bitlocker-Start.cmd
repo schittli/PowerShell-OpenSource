@@ -1,16 +1,11 @@
 @Echo off
 :: 190301, tom-agplv3@jig.ch
 :: 200731, tom-agplv3@jig.ch
-:: 	-ExecutionPolicy Bypass
+::  -ExecutionPolicy Bypass
 :: 003, 221215
-
-::		- Kopiert bei Bedarf die Files ins C:
-::		- Kommt klar, wenn der User das Script als Admin startet
-::		  >> Muss das Script stoppen und den User auffordern, es normal zu starten!
-::		  >> Wegen Admin Share-Zugriffen, die allenfalls fehlen
-
-
-
+::	 - Kopiert bei Bedarf die Files ins C:
+::	   Damit elevated Scripts nicht plötzlich 
+::	   den Zugriff auf die Quelle im Netzwerk verlieren
 
 
 :: Konfiguration
@@ -19,19 +14,16 @@ SET Verbose=0
 SET PowerShellVerbose=0
 :: Ex: Call :Verbose "Verbose ist aktiv!"
 
+:: SET "PSScript_ps1=%ScriptFilename%.ps1"
+SET "PSScript_ps1=Enable-Bitlocker.ps1"
+:: Echo %PSScript_ps1%
 
 :: WaitOnEnd: 0 oder 1
 SET WaitOnEnd=1
 :: Wenn definiert, wird das QuellDir ins ZielDir kopiert 
 :: und dann von dort ausgeführt
-Rem SET "CopyToCTempDir="
+Rem SET CopyToCTempDir=
 SET CopyToCTempDir=C:\Temp\IT-Bitlocker
-
-Rem Trailing Backslash entfernen
-Rem If "%CopyToCTempDir:~-1%" == "\" set "CopyToCTempDir=%CopyToCTempDir:~0,-1%"
-
-Rem Trailing Backslash zufügen
-If Defined CopyToCTempDir If Not "%CopyToCTempDir:~-1%"=="\" Set CopyToCTempDir=%CopyToCTempDir%\
 
 
 Rem Optional nur diese Fieltypen kopieren
@@ -46,18 +38,32 @@ SET CopyToCTempDirFileType3=
 SET CopyToCTempDirFileType4=
 SET CopyToCTempDirFileType5=
 
-
+Rem Berechnete Variablen
 SET "ScriptDir=%~dp0"
 SET "ScriptFilename=%~n0"
-:: SET "PSScript_ps1=%ScriptFilename%.ps1"
-SET "PSScript_ps1=Enable-Bitlocker.ps1"
-:: Echo %PSScript_ps1%
 
 
 Rem Allenfalls die Quelldateien ins Ziel kopieren
-Call :StartCopyToCTempDir %ScriptDir% %CopyToCTempDir%
-Echo Fertig kopiert
-Pause
+Rem und dann das ScriptDir neu setzen
+If Not (%CopyToCTempDir%) == () (
+	Rem Trailing Backslash entfernen
+	Rem If "%CopyToCTempDir:~-1%" == "\" set "CopyToCTempDir=%CopyToCTempDir:~0,-1%"
+
+	Rem Trailing Backslash zufügen
+	Rem !Ex prüfen, ob die Variable überhaupt existiert
+	Rem If Defined CopyToCTempDir If Not "%CopyToCTempDir:~-1%"=="\" Set CopyToCTempDir=%CopyToCTempDir%\
+	If Not "%CopyToCTempDir:~-1%"=="\" Set CopyToCTempDir=%CopyToCTempDir%\
+
+	Rem Kopieren starten
+	Call :StartCopyToCTempDir %ScriptDir% %CopyToCTempDir%
+	
+	Rem Das ScriptDir ist nun das ZielDir
+	Set ScriptDir=%CopyToCTempDir%
+	Rem Trailing Backslash zufügen
+	If Not "%ScriptDir:~-1%"=="\" Set ScriptDir=%ScriptDir%\
+	Echo Fertig kopiert
+)
+
 
 
 :: Argumente, die dem PowerShell-Script mitgegeben werden
