@@ -24,9 +24,22 @@ SET PowerShellVerbose=0
 SET WaitOnEnd=1
 :: Wenn definiert, wird das QuellDir ins ZielDir kopiert 
 :: und dann von dort ausgeführt
-Rem SET "CopyToCTempDir= "
-SET "CopyToCTempDir=C:\Temp\IT-Bitlocker"
-Rem Type1…5
+Rem SET "CopyToCTempDir="
+SET CopyToCTempDir=C:\Temp\IT-Bitlocker
+
+Rem Trailing Backslash entfernen
+Rem If "%CopyToCTempDir:~-1%" == "\" set "CopyToCTempDir=%CopyToCTempDir:~0,-1%"
+
+Rem Trailing Backslash zufügen
+If Defined CopyToCTempDir If Not "%CopyToCTempDir:~-1%"=="\" Set CopyToCTempDir=%CopyToCTempDir%\
+
+
+Rem Optional nur diese Fieltypen kopieren
+Rem …Type1…5
+Rem OK, kopiert alle:
+Rem SET CopyToCTempDirFileType1=
+Rem OK, kopiert alle:
+Rem SET CopyToCTempDirFileType1=*.*
 SET CopyToCTempDirFileType1=*.cmd
 SET CopyToCTempDirFileType2=*.ps1
 SET CopyToCTempDirFileType3=
@@ -40,8 +53,10 @@ SET "ScriptFilename=%~n0"
 SET "PSScript_ps1=Enable-Bitlocker.ps1"
 :: Echo %PSScript_ps1%
 
+
+Rem Allenfalls die Quelldateien ins Ziel kopieren
 Call :StartCopyToCTempDir %ScriptDir% %CopyToCTempDir%
-Echo tomtom
+Echo Fertig kopiert
 Pause
 
 
@@ -95,19 +110,23 @@ Exit /b
 :StartCopyToCTempDir
 :: %1: SrcDir
 :: %2: ZielDir
-:: Abbruch, wenn %2 leer ist
-Echo Start
-Echo CopyToCTempDirFileType1: %CopyToCTempDirFileType1%
-Echo %1
-Echo %2
+Rem Nützt:
+Rem %CopyToCTempDirFileType1%
+Rem %CopyToCTempDirFileType2%
+Rem %CopyToCTempDirFileType3%
+Rem %CopyToCTempDirFileType4%
+Rem %CopyToCTempDirFileType5%
+
+Rem Ohne Zielverzeichnis sind wir fertig
 If (%2) == () Exit /b
-Echo Nicht Leer
+
+Echo Kopiere Files
 
 :: Wenn das ZielDir existiert, dann löschen
 If Exist %2 (
 	Rem Echo lösche %2
 	rmdir /s /q %2
-	Rem Echo erzeuge %2
+	Rem Zielverzeichnis wird durch xcopy erzeugt
 	Rem mkdir %2
 )
 
@@ -128,11 +147,40 @@ Rem /y	Automatisch Files überschreiben
 Rem /z	Kopiert über ein Netzwerk im neustartbaren Modus
 Rem		Nützlich für grosse Dateien
 
-Echo xcopy.exe %1 %2 /V /C /I /R /Y /Q /K
-xcopy.exe %1 %2 /V /C /I /R /Y /Q /K
-Echo abc
-Pause
+Rem Alle Files kopieren?
+If (%CopyToCTempDirFileType1%) == () (
+	Rem Echo xcopy.exe "%1" "%2" /V /C /I /R /Y /Q /K
+	Echo  *.*
+	xcopy.exe "%1" "%2" /V /C /I /R /Y /Q /K
+	Exit /b
+) Else (
+	Rem Echo xcopy.exe "%1%CopyToCTempDirFileType1%" "%2" /V /C /I /R /Y /Q /K
+	Echo  %CopyToCTempDirFileType1%
+	xcopy.exe "%1%CopyToCTempDirFileType1%" "%2" /V /C /I /R /Y /Q /K
+)
+
+Rem Sind wir fertig?
+If (%CopyToCTempDirFileType2%) == () Exit /b
+Echo  %CopyToCTempDirFileType2%
+xcopy.exe "%1%CopyToCTempDirFileType2%" "%2" /V /C /I /R /Y /Q /K
+
+Rem Sind wir fertig?
+If (%CopyToCTempDirFileType3%) == () Exit /b
+Echo  %CopyToCTempDirFileType3%
+xcopy.exe "%1%CopyToCTempDirFileType3%" "%2" /V /C /I /R /Y /Q /K
+
+Rem Sind wir fertig?
+If (%CopyToCTempDirFileType4%) == () Exit /b
+Echo  %CopyToCTempDirFileType4%
+xcopy.exe "%1%CopyToCTempDirFileType4%" "%2" /V /C /I /R /Y /Q /K
+
+Rem Sind wir fertig?
+If (%CopyToCTempDirFileType5%) == () Exit /b
+Echo  %CopyToCTempDirFileType5%
+xcopy.exe "%1%CopyToCTempDirFileType5%" "%2" /V /C /I /R /Y /Q /K
+
 Exit /b
+
 
 
 :Verbose
