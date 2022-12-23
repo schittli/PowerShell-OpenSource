@@ -14,6 +14,8 @@
 ::  - Bug fixes
 :: 006, 221222
 ::  - Für CMD und PS je ein separates Temp-Dir
+:: 007, 221223
+::  - Besserer Is Elevated Check
 
 
 
@@ -100,9 +102,9 @@ Rem Call :DisplayColors
 
 
 Rem Sind wir bereits elevated?
-If Defined SESSIONNAME (
-	Call :ShowHeader "%Header1%" "%Header2%"
-) Else (
+Set IsElevatedSession=
+Call :CheckElevatedSession IsElevatedSession
+If /i "%IsElevatedSession%"=="True" (
 	Echo %ClrReset%
 	Echo %Header1%
 	Echo %Header2%
@@ -126,6 +128,10 @@ If Defined SESSIONNAME (
 	Pause >nul
 	Exit
 )
+
+
+Rem Alles OK, wir sind nicht elevated
+Call :ShowHeader "%Header1%" "%Header2%"
 
 
 
@@ -163,6 +169,21 @@ If (%WaitOnEnd%) == (1) (
 
 
 :: =========================================================================
+
+:CheckElevatedSession
+:: Prüft, ob die Session elevated ist 
+:: und setzt die Variable in %1 auf True / False
+Rem !Q https://stackoverflow.com/a/11995662/4795779
+Net Session >nul 2>&1
+If %ErrorLevel% == 0 (
+	Rem Echo Administrative permissions enabled
+	Set %1=True
+) Else (
+	Rem Echo Administrative permissions disabled
+	Set %1=False
+)
+Exit /b
+
 
 Rem Die Begrüssung anzeigen
 :ShowHeader
