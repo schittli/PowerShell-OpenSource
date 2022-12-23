@@ -34,11 +34,16 @@
 # 	$BitLockerInfo | Group Usernamen | ? Count -gt 1 | select -ExpandProperty Group | select UserNamen, ComputerName
 # 
 # 	# Alle User, die Bitlocker nicht aktiviert haben
-# 	$BitLockerInfo |  ? { $_.BitlockerPWSetDate -eq $null -and $_.UserNamen } | select ComputerName, UserNamen, IsSingleOwner, AnzOwner, Betriebssystem, LastLogonDate, BitlockerPWSetDate | ogv
+# 	$BitlockerDisabled = $BitLockerInfo | ? { $_.BitlockerPWSetDate -eq $null -and $_.UserNamen } | select ComputerName, UserNamen, IsSingleOwner, AnzOwner, Betriebssystem, LastLogonDate, BitlockerPWSetDate
+# 	$BitlockerDisabled.Count
 # 
+# 	# Alle User, die Bitlocker aktiviert haben
+# 	$BitlockerEnabled = $BitLockerInfo | ? { $_.BitlockerPWSetDate -and $_.UserNamen } | select ComputerName, UserNamen, IsSingleOwner, AnzOwner, Betriebssystem, LastLogonDate, BitlockerPWSetDate
+# 	$BitlockerEnabled.Count
 # 
+# 	# Anzeigen
+#  $BitlockerDisabled | ogv
 # 
-
 
 
 
@@ -49,8 +54,6 @@
 
 
 ### Configure
-
-
 
 
 
