@@ -22,6 +22,10 @@
 #	Logfile erzeugen
 # 007, 221213
 #	Bei HWTest pending wird nach dem Neustart das Script nochmals gestartet um die Inventar-Info zu generieren
+# 008, 221223
+#	Wenn das Gerät nicht für BitLocker geeignet ist,
+#	dann wird jetzt eine passende Meldung angezeigt
+#	und das Inventarfile ergänzt
 
 
 [CmdLetBinding()]
@@ -51,6 +55,9 @@ If ($PSVersionTable.PSVersion.Major -gt 5) {
 
 
 ### Config
+
+$Header1 = 'Noser SSF IT, Bitlocker-Verschluesselung'
+$Header2 = 'Hinweise bitte an: Thomas.Schittli@akros.ch'
 
 $InventarLogDir = '\\akros.ch\sysvol\akros.ch\scripts\Inventar\Inventarfiles\'
 $TestBitlockerPrerequisites_ps1 = 'Test-Bitlocker-Prerequisites.ps1'
@@ -1118,8 +1125,10 @@ Function Is-Elevated() {
 
 
 # 221212 Option: $ShowText
-Function Show-Countdown($TimeoutSec = 1, [Switch]$ShowText) {
-	$Text = 'Es geht automatisch weiter in '
+# 221223 Option: $Msg
+Function Show-Countdown($TimeoutSec = 1, [Switch]$ShowText, [String]$Msg = 'Es geht automatisch weiter') {
+	$Msg = $Msg.Trim()
+	$Text = ('{0} in ' -f $Msg)
 	$Cnt = 0
 	While ($Cnt -lt $TimeoutSec) {
 		If ($ShowText) {
@@ -1137,6 +1146,19 @@ Function Show-Countdown($TimeoutSec = 1, [Switch]$ShowText) {
 	Write-Host ("`r" + ' ' * ($Text.Length + 5) + "`n")
 }
 
+
+### Header anzeigen / Für die User die Shell identifizieren
+Function Show-Header($Header1, $Header2) {
+	Write-Host "`n$Header1" -ForegroundColor DarkCyan
+	Write-Host "$Header2`n" -ForegroundColor DarkCyan
+}
+
+
+### Header anzeigen
+Show-Header -Header1 $Header1 -Header2 $Header2
+
+
+### Is elevated?
 
 # !Sj Autostart Shell elevated
 # 221205
@@ -1181,7 +1203,7 @@ If (!(Is-Elevated)) {
 
 } Else {
 	$Host.UI.RawUI.WindowTitle = $MyInvocation.MyCommand.Definition + ' (Elevated)'
-	$Host.UI.RawUI.BackgroundColor = 'DarkBlue'
+	# $Host.UI.RawUI.BackgroundColor = 'DarkBlue'
 	Clear-Host
 	Log 0 'Pruefe, ob BitLocker aktiviert ist'
 	Log 1 "Version: $Version" -ForegroundColor DarkGray
@@ -1231,7 +1253,7 @@ Function Stop-Script($WaitOnEnd) {
 		}
 		Default {
 			# Start-Sleep -Seconds $WaitOnEnd
-			Show-Countdown $WaitOnEnd -ShowText
+			Show-Countdown $WaitOnEnd -ShowText -Msg 'Script wird beendet'
 		}
 	}
 	Break Script
@@ -1379,7 +1401,7 @@ If ($BitlockerSetupState -eq [eBitlockerSetupState]::AllLocalDrivesEncrypted) {
 			Log 4 '  Keine Verbindung zu den Domänen-Controllern' -ForegroundColor Red
 			Log 4 '  Kann kein Backup von den Bitlocker-Keys erstellen'
 			Log 4 '  > VPN verbinden!' -ForegroundColor Cyan
-			Break Script
+			Stop-Script -WaitOnEnd:1
 		}
 	}
 
@@ -1388,7 +1410,7 @@ If ($BitlockerSetupState -eq [eBitlockerSetupState]::AllLocalDrivesEncrypted) {
 										-InventarLogDir $InventarLogDir `
 										-DomainName $DomainName -DcIpV4Address $DcIpV4Address
 
-	Log 0 "Das Fenster schliesst sich selber..."
+	Log 0 'Das Fenster schliesst sich selber...'
 	Stop-Script-Wait
 }
 
@@ -1411,7 +1433,14 @@ If (($BitlockerSetupState -eq [eBitlockerSetupState]::NoLocalDrivesEncrypted) `
 	#	weil wir nur mit HW arbeiten, die dies unterstützt
 	If (-not (Assert-TPM-OnC)) {
 		Log 4 'Konnte auf dem Laufwerk C: TPM nicht aktivieren.' -ForegroundColor Red
-		Log 4 'Abbruch!' -ForegroundColor Yellow
+		
+		## Das Status-Logfile schreiben
+		Test-Start-CreateInventar -CreateInventarLog:$True -TestBitlockerPrerequisites_ps1 $TestBitlockerPrerequisites_ps1 `
+			-InventarLogDir $InventarLogDir `
+			-DomainName $DomainName -DcIpV4Address $DcIpV4Address
+		
+		Log 4 'BitLocker kann auf diesem BIOS / Windows nicht aktiviert werden!' -ForegroundColor Yellow
+		Stop-Script -WaitOnEnd:1
 		Break Script
 	}
 
@@ -1419,6 +1448,7 @@ If (($BitlockerSetupState -eq [eBitlockerSetupState]::NoLocalDrivesEncrypted) `
 	If ((WaitFor-Domain-Reachable -DomainName $DomainName -DcIpV4Address $DcIpV4Address) -eq $False) {
 		Log 4 'Konnte nicht mit der Domäne verbinden.' -ForegroundColor Red
 		Log 4 'Abbruch!' -ForegroundColor Yellow
+		Stop-Script -WaitOnEnd:1
 		Break Script
 	}
 
@@ -1436,8 +1466,8 @@ If (($BitlockerSetupState -eq [eBitlockerSetupState]::NoLocalDrivesEncrypted) `
 
 	Switch ($BitlockerHWTestPendingState) {
 		([eBitlockerHWTestPendingState]::TestPending) {
-			Log 0 '  Der Computer wird neu gestartet,' -ForegroundColor Red
-			Log 1 '  damit BitLocker die HW testen kann' -ForegroundColor Red
+			Log 0 'Der Computer wird neu gestartet,' -ForegroundColor Red
+			Log 1 'damit BitLocker die HW testen kann' -ForegroundColor Red
 
 			## Wenn wir noch Datendisks verschlüsseln müssen,
 			# dann das Script nach dem Login wieder starten
@@ -1463,6 +1493,8 @@ If (($BitlockerSetupState -eq [eBitlockerSetupState]::NoLocalDrivesEncrypted) `
 		([eBitlockerHWTestPendingState]::TestFailed) {
 			Log 4 '  Vorsicht!' -ForegroundColor Red
 			Log 4 '  Dieses Gerät ist nicht mit BitLocker kompatibel' -ForegroundColor Red
+			Stop-Script -WaitOnEnd:1
+			Break Script
 		}
 		Default {
 			Log 0 '  Alles OK' -ForegroundColor Green
@@ -1480,7 +1512,8 @@ If ((WaitFor-Domain-Reachable -DomainName $DomainName -DcIpV4Address $DcIpV4Addr
 	Log 4 'Konnte nicht mit der Domäne verbinden.' -ForegroundColor Red
 	Log 4 'Die Datenlaufwerke wurden nicht verschlüsselt!' -ForegroundColor Red
 	Log 4 'Abbruch!' -ForegroundColor Yellow
-	Return
+	Stop-Script -WaitOnEnd:1
+	Break Script
 }
 
 # Dem Netzwerk noch etwas Zeit geben

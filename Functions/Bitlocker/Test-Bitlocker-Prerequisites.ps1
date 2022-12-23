@@ -24,6 +24,8 @@
 
 # 001, 221207
 #	Autostart Shell elevated
+# 002, 221223
+#	Status-Texte mit weniger Missverstänsnissen
 
 
 [CmdLetBinding()]
@@ -849,15 +851,15 @@ $HasAllDataDriveBitlockerActive = Has-AllDataDrive-BitlockerActive
 
 # Das Resultat zusammenstellen
 $ResStatus = [PSCustomObject][Ordered]@{
-	Timestamp						= $Timestamp
-	ComputerName					= $Env:ComputerName
-	UserName						= $Env:UserName
+	Timestamp							= $Timestamp
+	ComputerName						= $Env:ComputerName
+	UserName								= $Env:UserName
 	# Alle lokalen Laufwerke sind verschlüsselt
 	BitlockerAllOK              	= $HasSystemDriveBitlockerActive -and $HasAllDataDriveBitlockerActive
 	SysDrvBitlockerActive   		= $HasSystemDriveBitlockerActive
 	SysDrvBitlockerHWTestPending 	= $HasSystemDriveBitlockerHWTestPending
-	HasDataDrives					= $HasDataDrives
-	AllDataDrvsBitlockerActive 		= $HasAllDataDriveBitlockerActive
+	HasDataDrives						= $HasDataDrives
+	AllDataDrvsBitlockerActive		= $HasAllDataDriveBitlockerActive
 	BIOS                        	= $BiosType
 	TPMReady                    	= $IsTPMReady
 	SecureBootEnabled           	= $IsUefiSecurebootEnabled
@@ -883,18 +885,23 @@ If ([String]::IsNullOrEmpty($WriteLogToDir) -eq $False) {
 			'  ❌ Nicht alles OK: Das System- und alle Daten-Laufwerke sind mit Bitlocker verschlüsselt' | Out-File $LogFile -Append
 		}
 		If ($ResStatus.SysDrvBitlockerActive) {
-			'  ✅ Systemlaufwerk ist verschlüsselt' | Out-File $LogFile -Append
+			'  ✅ System-Laufwerk: ist verschlüsselt' | Out-File $LogFile -Append
 		} Else {
 			If ($ResStatus.SysDrvBitlockerHWTestPending) {
-				'  ❓ Systemlaufwerk: HW-Test pending' | Out-File $LogFile -Append
+				'  ❓ System-Laufwerk: HW-Test pending' | Out-File $LogFile -Append
 			} Else {
-				'  ❌ Systemlaufwerk ist nicht verschlüsselt' | Out-File $LogFile -Append
+				'  ❌ System-Laufwerk ist nicht verschlüsselt' | Out-File $LogFile -Append
 			}
 		}
-		If ($ResStatus.AllDataDrvsBitlockerActive) {
-			'  ✅ Alle Datenlaufwerke sind verschlüsselt' | Out-File $LogFile -Append
+		
+		If (($ResStatus.HasDataDrives) {
+			If ($ResStatus.AllDataDrvsBitlockerActive) {
+				'  ✅ Daten-Laufwerke: alle sind verschlüsselt' | Out-File $LogFile -Append
+			} Else {
+				'  ❌ Daten-Laufwerke: sind nicht alle verschlüsselt' | Out-File $LogFile -Append
+			}
 		} Else {
-			'  ❌ Nicht alle Datenlaufwerke sind verschlüsselt' | Out-File $LogFile -Append
+			'  ✅ Daten-Laufwerke: *keine* vorhanden' | Out-File $LogFile -Append
 		}
 		$ResStatus | Out-File $LogFile -Append
 	} Else {
@@ -969,7 +976,7 @@ If ($HasDataDrives) {
 		Log 1 ("{0,-$Col1Width}: {1}" -f 'Daten-Laufwerke', 'Nicht mit BitLocker geschützt') -ForegroundColor Red
 	}
 } Else {
-	Log 1 ("{0,-$Col1Width}: {1}" -f 'Daten-Laufwerke', 'Hat keine Datenlauferke') -ForegroundColor Green
+	Log 1 ("{0,-$Col1Width}: {1}" -f 'Daten-Laufwerke', 'Hat keine Daten-Lauferke') -ForegroundColor Green
 }
 
 
